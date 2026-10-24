@@ -109,9 +109,7 @@ function parseBook(wb){
       cols.forEach(function(p){var l=lab[p[0]],d=p[1].getDay();if(l!=null&&!(l==="CN"?d===0:l===d+1))bad++});
       if(!bad&&!base&&cols.length)base=cols;
       else if(bad&&base){
-        var last=base[base.length-1];cols=base.slice();
-        for(var c=last[0]+1;c<=39;c++){var l=lab[c];if(typeof l!=="number"||l<2||l>7)continue;
-          var d=new Date(last[1]);while(d.getDay()!==l-1)d.setDate(d.getDate()+1);cols.push([c,d])}
+        cols=base.slice();
       }
       var tcol=norm(a[h][1]).indexOf("giáo viên")>=0?1:2, scol=3-tcol;
       var cls=null,teach=null,subj=null,room=null;
