@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thống kê giảng dạy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--fg:#1d2a2e;--muted:#5d6b70;--line:#d9dfdc;--accent:#0f5c63;--accent-fg:#fff;--soft:#e4eeee;--warn:#8a5a00;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13191b;--card:#1b2427;--fg:#e6ecec;--muted:#93a3a6;--line:#2c393c;--accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#223235;--warn:#e0b050;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#13191b;--card:#1b2427;--fg:#e6ecec;--muted:#93a3a6;--line:#2c393c;--accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#223235;--warn:#e0b050;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Be Vietnam Pro","Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:1.1rem;margin:28px 0 8px}
+p.sub{margin:0 0 16px;color:var(--muted);max-width:60ch}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:14px}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
+.drop.over,.drop:focus-visible{border-color:var(--accent);background:var(--soft);outline:none}
+.drop b{color:var(--fg)}
+label{font-weight:600;display:block;margin-bottom:4px}
+input[type=text],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:640px){.row{grid-template-columns:2fr 1fr}}
+.tot{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.tot div{flex:1 1 140px;background:var(--soft);border-radius:8px;padding:10px 14px}
+.tot strong{display:block;font-size:1.7rem;line-height:1.2;color:var(--accent)}
+.tot span{color:var(--muted);font-size:.9rem}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--soft);font-weight:600;position:sticky;top:0}
+td.n,th.n{text-align:right}
+tr.sum td{font-weight:700;background:var(--soft)}
+td.shl{color:var(--muted)}
+.note{color:var(--muted);font-size:.9rem;margin:6px 0 0}
+.msg{padding:14px;border-radius:8px;background:var(--soft)}
+.warn{color:var(--warn)}
+.lk{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline;font:inherit;cursor:pointer}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer}
+@media print{.panel,.noprint{display:none}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<main>
+<h1>Thống kê giảng dạy theo giáo viên</h1>
+<p class="sub">Chọn file lịch giảng dạy Excel của trường. File chỉ được đọc ngay trên máy của bạn, không tải lên đâu cả.</p>
+
+<section class="panel noprint">
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Chọn file Excel">
+    <b id="fname">Bấm để chọn một hoặc nhiều file Excel</b><br>hoặc kéo thả nhiều file .xlsx vào đây. Có thể thêm file tiếp nhiều lần.
+    <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
+  </div>
+  <div class="row">
+    <div><label for="gv">Tên giáo viên</label><input type="text" id="gv" list="gvlist" value="Lê Quốc Hoàng" placeholder="Để trống để xem tất cả giáo viên" autocomplete="off"><datalist id="gvlist"></datalist></div>
+    <div><label for="mon">Tháng</label><select id="mon"><option value="">Tất cả các tháng</option></select></div>
+  </div>
+  <div><button type="button" id="all">Xem tất cả giáo viên</button> <button type="button" id="reset">Xóa hết file đã chọn</button></div>
+  <p class="note" style="margin:0">Nếu hai file có cùng tên sheet (ví dụ bản gốc và bản điều chỉnh của cùng một tháng), trang dùng file được lưu sau cùng. Sheet đang ẩn trong Excel được bỏ qua.</p>
+  <div id="sheets"></div>
+</section>
+
+<div id="out"><p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p></div>
+<p class="note noprint"><button id="print">In trang này</button></p>
+</main>
+
+<script>
+var REC=[];
+var $=function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function norm(s){return String(s==null?"":s).normalize("NFC").replace(/\s+/g," ").trim().toLowerCase()}
+function iso(d){return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}
+function fmt(d){return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+d.getFullYear()}
+
+function isName(s){s=String(s==null?"":s).replace(/\s+/g," ").trim();if(!s||/\d/.test(s))return false;var w=s.split(" ");if(w.length<2||w.length>5)return false;
+  return w.every(function(x){var ch=x.charAt(0);return ch===ch.toUpperCase()&&ch!==ch.toLowerCase()})}
+
+function cellText(a,pat){
+  for(var r=0;r<8&&r<a.length;r++){var row=a[r]||[];for(var c=0;c<row.length;c++){var v=row[c];if(typeof v==="string"&&pat.test(v))return v}}
+  return ""}
+
+function strip(s){return norm(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d")}
+
+function parseBook(wb){
+  var out=[];
+  wb.SheetNames.forEach(function(name,i){
+    var meta=wb.Workbook&&wb.Workbook.Sheets&&wb.Workbook.Sheets[i];
+    if(meta&&meta.Hidden)return;
+    var a=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:null,raw:true});
+    var title=cellText(a,/TH[ÁA]NG\s+\d+/i), mt=title.match(/TH[ÁA]NG\s+(\d+)/i), hs=[];
+    for(var r=0;r<a.length;r++){if(a[r]&&norm(a[r][0])==="lớp")hs.push(r)}
+    if(!mt||!hs.length)return;
+    var month=+mt[1], yy=title.match(/(\d{4})\s*-\s*(\d{4})/), ym=title.match(/TH[ÁA]NG\s+\d+\s*\/\s*(\d{4})/i);
+    var year=ym?+ym[1]:(yy?(month>=8?+yy[1]:+yy[2]):2026), recs=[], base=null;
+    hs.forEach(function(h,bi){
+      var dr=a[h+1]; if(!dr)return;
+      var end=bi+1<hs.length?hs[bi+1]:a.length;
+      var first=dr[5], m=(typeof first==="number"&&first>20)?month-1:month, prev=null, cols=[];
+      for(var c=5;c<=39;c++){
+        var v=dr[c]; if(typeof v!=="number")continue;
+        if(prev!==null&&v<prev)m++;
+        prev=v; cols.push([c,new Date(year+Math.floor((m-1)/12),(m-1)%12,v)]);
+      }
+      var lab=a[h+2]||[], bad=0;
+      cols.forEach(function(p){var l=lab[p[0]],d=p[1].getDay();if(l!=null&&!(l==="CN"?d===0:l===d+1))bad++});
+      if(!bad&&!base&&cols.length)base=cols;
+      else if(bad&&base){
+        var last=base[base.length-1];cols=base.slice();
+        for(var c=last[0]+1;c<=39;c++){var l=lab[c];if(typeof l!=="number"||l<2||l>7)continue;
+          var d=new Date(last[1]);while(d.getDay()!==l-1)d.setDate(d.getDate()+1);cols.push([c,d])}
+      }
+      var tcol=norm(a[h][1]).indexOf("giáo viên")>=0?1:2, scol=3-tcol;
+      var cls=null,teach=null,subj=null,room=null;
+      for(var r=h+3;r<end;r++){
+        var row=a[r]||[];
+        if(row[0]&&String(row[0]).trim())cls=String(row[0]).replace(/\s+/g," ").trim();
+        var b=row[tcol],c2=row[scol];
+        if(b||c2){var tb=b,sc=c2;if(isName(sc)&&!isName(tb)){tb=c2;sc=b}teach=tb;subj=sc}
+        if(row[3])room=row[3];
+        if(row[4]==null||!teach)continue;
+        var ca=String(row[4]).trim();
+        if(/^sinh hoạt/.test(norm(subj)))continue;
+        cols.forEach(function(p){
+          var n=row[p[0]]; if(typeof n!=="number"||!n)return;
+          var key=[iso(p[1]),ca,cls,norm(subj),norm(teach)].join("|"), wd=p[1].getDay();
+          recs.push({key:key,m:month,sheet:name,cls:cls,subj:String(subj||""),room:room||"",ca:ca,date:p[1],thu:wd===0?"CN":"T"+(wd+1),shl:false,n:n,teacher:String(teach).replace(/\s+/g," ").trim()});
+        });
+      }
+    });
+    out.push({name:name,month:month,dept:norm(cellText(a,/^\s*LỊCH\s+GIẢNG\s+DẠY/i)),recs:recs});
+  });
+  return out;
+}
+
+var SHEETS={},FN=[],IDS=[];
+function readFile(file){return new Promise(function(res,rej){var fr=new FileReader();
+  fr.onload=function(e){try{res({file:file,sheets:parseBook(XLSX.read(new Uint8Array(e.target.result),{type:"array"}))})}catch(x){rej(file.name)}};
+  fr.onerror=function(){rej(file.name)};fr.readAsArrayBuffer(file)})}
+
+function addBook(x){
+  var copy=/\(\d+\)\s*$/, grp={}, t=x.file.lastModified||0;
+  FN.push(x.file.name);
+  x.sheets.forEach(function(s){var g=s.dept+"|"+s.month;(grp[g]=grp[g]||[]).push(s)});
+  Object.keys(grp).forEach(function(g){
+    var arr=grp[g], pick=arr[0];
+    arr.forEach(function(s){if(copy.test(pick.name)&&!copy.test(s.name))pick=s});
+    arr.forEach(function(s){
+      var id=s.dept+"|"+s.month+"|"+norm(s.name);
+      if(!SHEETS[id]||t>=SHEETS[id].t)SHEETS[id]={t:t,file:x.file.name,name:s.name,month:s.month,recs:s.recs,on:s===pick,dup:s!==pick};
+    });
+  });
+}
+
+function rebuild(){
+  var seen={},names={},months={},gv=$("gv").value,mv=$("mon").value,open=false,det=$("sheets").querySelector("details");
+  if(det)open=det.open;
+  REC=[];IDS=Object.keys(SHEETS);
+  IDS.forEach(function(id){var s=SHEETS[id];if(!s.on)return;s.recs.forEach(function(r){if(!seen[r.key]){seen[r.key]=1;REC.push(r)}})});
+  var vt={},merged=[];
+  REC.forEach(function(r){r.orig=r.orig||r.teacher;var k=strip(r.orig),o=vt[k]||(vt[k]={});o[r.orig]=(o[r.orig]||0)+r.n});
+  Object.keys(vt).forEach(function(k){var v=Object.keys(vt[k]).sort(function(x,y){return vt[k][y]-vt[k][x]});vt[k]=v[0];
+    if(v.length>1)merged.push(v.slice(1).map(function(x){return "“"+esc(x)+"”"}).join(", ")+" vào “"+esc(v[0])+"”")});
+  REC.forEach(function(r){r.teacher=vt[strip(r.orig)];names[r.teacher]=1;months[r.m]=1;r.cls0=r.cls0||r.cls;r.cls=r.cls0});
+  var s2={},R2=[];
+  REC.forEach(function(r){var k=iso(r.date)+"|"+r.ca.replace(/\s+/g,"").toUpperCase()+"|"+norm(r.teacher),f=s2[k];
+    if(!f){s2[k]=r;R2.push(r)}else if(f.cls.split(" + ").indexOf(r.cls0)<0)f.cls+=" + "+r.cls0});
+  REC=R2;
+  $("fname").textContent=FN.length+" file: "+FN.join(", ");
+  $("gvlist").innerHTML=Object.keys(names).sort().map(function(n){return '<option value="'+esc(n)+'">'}).join("");
+  $("mon").innerHTML='<option value="">Tất cả các tháng</option>'+Object.keys(months).map(Number).sort(function(a,b){return a-b}).map(function(m){return '<option value="'+m+'"'+(String(m)===mv?' selected':'')+'>Tháng '+m+'</option>'}).join("");
+  var on=0,dup=false;
+  var li=IDS.map(function(id,i){var s=SHEETS[id];if(s.on)on++;if(s.dup)dup=true;
+    return '<label style="display:block;margin:4px 0"><input type="checkbox" data-i="'+i+'"'+(s.on?' checked':'')+'> '+esc(s.file)+' · '+esc(s.name)+' · tháng '+s.month+' · '+s.recs.length+' dòng'+(s.dup?' <span class="warn">(cùng khoa, cùng tháng với sheet khác nên đang tắt; bật nếu đây mới là bản đúng)</span>':'')+'</label>'}).join("");
+  $("sheets").innerHTML=IDS.length?'<details'+(open||dup?' open':'')+'><summary>Các sheet đang dùng ('+on+'/'+IDS.length+')'+(dup?' <span class="warn">– cần kiểm tra</span>':'')+'</summary>'+li+'</details>':"";
+  if(merged.length)$("sheets").innerHTML+='<p class="note">Đã gộp các tên chỉ khác dấu: '+merged.join("; ")+'.</p>';
+  render();
+}
+
+function load(files){
+  Promise.all(Array.prototype.map.call(files,readFile)).then(function(list){
+    try{list.forEach(addBook);rebuild()}
+    catch(err){$("out").innerHTML='<p class="msg warn">Không đọc được file này. Hãy kiểm tra đây là file lịch giảng dạy .xlsx của trường.</p>'}
+  },function(bad){$("out").innerHTML='<p class="msg warn">Không đọc được file "'+esc(bad)+'". Hãy kiểm tra đây là file lịch giảng dạy .xlsx của trường.</p>'});
+}
+
+function render(){
+  var out=$("out");
+  if(!REC.length){out.innerHTML='<p class="msg warn">Không tìm thấy dữ liệu giảng dạy trong file. Lịch cần có tiêu đề “THÁNG …” ở ô A5 và ngày ở hàng 8.</p>';return}
+  var who=norm($("gv").value), mf=$("mon").value;
+  if(!who){renderAll(mf);return}
+  var rows=REC.filter(function(r){return norm(r.teacher)===who&&(!mf||r.m==mf)});
+  if(!rows.length){out.innerHTML='<p class="msg warn">Không có tiết dạy nào của “'+esc($("gv").value)+'”. Chọn tên trong danh sách gợi ý để đúng chính tả.</p>';return}
+  rows.sort(function(a,b){return a.m-b.m||a.date-b.date||a.ca.localeCompare(b.ca)});
+  var bm={},bc={};
+  rows.forEach(function(r){
+    var o=bm[r.m]||(bm[r.m]={gd:0,days:{},ses:0}); var d=iso(r.date);
+    o.gd+=r.n;o.ses++;
+    o.days[d]=1;
+    var k=r.m+"|"+r.cls+"|"+r.subj, c=bc[k]||(bc[k]={m:r.m,cls:r.cls,subj:r.subj,n:0,days:{}});
+    c.n+=r.n; c.days[d]=1;
+  });
+  var T={gd:0,days:0,ses:0}, h="";
+  var mk=Object.keys(bm).map(Number).sort(function(a,b){return a-b});
+  var tr=mk.map(function(m){var o=bm[m],nd=Object.keys(o.days).length;
+    T.gd+=o.gd;T.days+=nd;T.ses+=o.ses;
+    return '<tr><td>Tháng '+m+'</td><td class="n">'+o.gd+'</td><td class="n">'+nd+'</td><td class="n">'+o.ses+'</td></tr>'}).join("");
+  h+='<h2>'+esc(rows[0].teacher)+'</h2><div class="tot"><div><strong>'+T.gd+'</strong><span>tiết giảng dạy</span></div><div><strong>'+T.days+'</strong><span>ngày lên lớp</span></div><div><strong>'+T.ses+'</strong><span>buổi (ca)</span></div></div>';
+  h+='<h2>Theo tháng</h2><div class="wrap"><table><tr><th>Tháng</th><th class="n">Tiết giảng dạy</th><th class="n">Ngày lên lớp</th><th class="n">Số buổi (ca)</th></tr>'+tr+
+    '<tr class="sum"><td>Cộng</td><td class="n">'+T.gd+'</td><td class="n">'+T.days+'</td><td class="n">'+T.ses+'</td></tr></table></div>';
+  h+='<p class="note">Số buổi (ca) là số lượt Sáng/Chiều có tiết giảng dạy. Tiết sinh hoạt lớp không được thống kê.</p>';
+  var ck=Object.keys(bc).map(function(k){return bc[k]}).sort(function(a,b){return a.m-b.m||String(a.cls).localeCompare(String(b.cls))});
+  h+='<h2>Theo lớp và môn</h2><div class="wrap"><table><tr><th>Tháng</th><th>Lớp</th><th>Môn/Mô đun</th><th class="n">Số tiết</th><th class="n">Số ngày</th></tr>'+
+    ck.map(function(c){return '<tr><td>'+c.m+'</td><td>'+esc(c.cls)+'</td><td>'+esc(c.subj)+'</td><td class="n">'+c.n+'</td><td class="n">'+Object.keys(c.days).length+'</td></tr>'}).join("")+'</table></div>';
+  h+='<h2>Chi tiết từng buổi</h2><div class="wrap" style="max-height:480px"><table><tr><th>Ngày</th><th>Thứ</th><th>Ca/Tiết</th><th>Lớp</th><th>Môn/Mô đun</th><th>Phòng</th><th class="n">Số tiết</th></tr>'+
+    rows.map(function(r){return '<tr><td>'+fmt(r.date)+'</td><td>'+r.thu+'</td><td>'+esc(r.ca)+'</td><td>'+esc(r.cls)+'</td><td'+(r.shl?' class="shl"':'')+'>'+esc(r.subj)+'</td><td>'+esc(r.room)+'</td><td class="n">'+r.n+'</td></tr>'}).join("")+'</table></div>';
+  h+='<p class="note">Các dòng trùng giữa sheet tổng của Khoa và sheet từng trung tâm chỉ được tính một lần. Lớp ghép (cùng giáo viên, ngày, ca nhưng ghi ở nhiều lớp) cũng chỉ tính một lần và hiện tên lớp nối bằng dấu “ + ”.</p>';
+  out.innerHTML=h;
+}
+
+function renderAll(mf){
+  var t={},tot=0;
+  REC.forEach(function(r){if(mf&&r.m!=mf)return;
+    var o=t[r.teacher]||(t[r.teacher]={n:0,days:{},ses:0});o.n+=r.n;o.ses++;o.days[iso(r.date)]=1;tot+=r.n});
+  var ks=Object.keys(t).sort(function(a,b){return t[b].n-t[a].n||a.localeCompare(b)});
+  if(!ks.length){$("out").innerHTML='<p class="msg warn">Không có dữ liệu cho tháng này.</p>';return}
+  $("out").innerHTML='<h2>Tất cả giáo viên'+(mf?' – tháng '+mf:'')+'</h2><p class="note">Bấm vào tên giáo viên để xem chi tiết. Tiết sinh hoạt lớp không được thống kê.</p><div class="wrap"><table><tr><th>Giáo viên</th><th class="n">Tiết giảng dạy</th><th class="n">Ngày lên lớp</th><th class="n">Số buổi (ca)</th></tr>'+
+    ks.map(function(k){var o=t[k];return '<tr><td><button type="button" class="lk" data-gv="'+esc(k)+'">'+esc(k)+'</button></td><td class="n">'+o.n+'</td><td class="n">'+Object.keys(o.days).length+'</td><td class="n">'+o.ses+'</td></tr>'}).join("")+
+    '<tr class="sum"><td>'+ks.length+' giáo viên</td><td class="n">'+tot+'</td><td></td><td></td></tr></table></div>';
+}
+$("out").addEventListener("click",function(e){var b=e.target.closest("[data-gv]");if(b){$("gv").value=b.getAttribute("data-gv");render();window.scrollTo(0,0)}});
+$("all").addEventListener("click",function(){$("gv").value="";render()});
+var drop=$("drop"),fi=$("file");
+drop.addEventListener("click",function(){fi.click()});
+drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
+fi.addEventListener("change",function(){if(fi.files.length){load(fi.files);fi.value=""}});
+$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
+["dragover","dragenter"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.add("over")})});
+["dragleave","drop"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove("over")})});
+drop.addEventListener("drop",function(e){var f=e.dataTransfer.files;if(f.length)load(f)});
+$("sheets").addEventListener("change",function(e){var i=e.target.getAttribute("data-i");if(i!==null){SHEETS[IDS[+i]].on=e.target.checked;rebuild()}});
+$("gv").addEventListener("input",render);
+$("mon").addEventListener("change",render);
+$("print").addEventListener("click",function(){window.print()});
+</script>
+</body>
+</html>
