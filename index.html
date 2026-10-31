@@ -42,7 +42,18 @@ td.shl{color:var(--muted)}
 .warn{color:var(--warn)}
 .lk{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline;font:inherit;cursor:pointer}
 button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer}
-@media print{.panel,.noprint{display:none}body{background:#fff;color:#000}}
+details{border:1px solid var(--line);border-radius:8px;background:var(--card);margin:10px 0}
+summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:1.05rem}
+details[open]>summary{border-bottom:1px solid var(--line)}
+details>*:not(summary){margin:12px 14px}
+.g3{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+#paper{background:#fff;color:#000;padding:26px 32px;font:15px/1.5 "Times New Roman",Times,serif;border:1px solid var(--line);border-radius:6px;overflow-x:auto;margin-top:12px}
+#paper table{width:100%}
+#paper th,#paper td{background:#fff;color:#000;white-space:normal;border:1px solid #000;padding:5px 8px;position:static;vertical-align:top}
+#paper .nb td{border:none}
+.pg+.pg{border-top:2px dashed #999;margin-top:26px;padding-top:22px}
+@page{size:A4;margin:15mm 15mm 15mm 20mm}
+@media print{body.pp #paper{font-size:12pt}body.pp .pg+.pg{border:none;margin:0;padding:0}.panel,.noprint{display:none}body{background:#fff;color:#000}body.pp main>*:not(#bk){display:none}body.pp #paper{border:none;padding:0;margin:0}}
 </style>
 </head>
 <body>
@@ -61,10 +72,26 @@ button{font:inherit;border:1px solid var(--line);background:var(--card);color:va
   </div>
   <div><button type="button" id="all">Xem tất cả giáo viên</button> <button type="button" id="reset">Xóa hết file đã chọn</button></div>
   <p class="note" style="margin:0">Nếu hai file có cùng tên sheet (ví dụ bản gốc và bản điều chỉnh của cùng một tháng), trang dùng file được lưu sau cùng. Sheet đang ẩn trong Excel được bỏ qua.</p>
+  <p class="note" id="saved" style="margin:0"></p>
+  <p class="note" id="repoinfo" style="margin:0"></p>
   <div id="sheets"></div>
 </section>
 
 <div id="out"><p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p></div>
+<section id="bk" style="display:none">
+  <details id="bkd"><summary class="noprint">Hồ sơ thanh toán công tác phí (giấy đề nghị, bảng kê, bản xác nhận)</summary>
+  <p class="note noprint" id="bkmsg"></p>
+  <div class="panel noprint"><div class="g3">
+    <div><label for="k_khoa">Khoa</label><input type="text" id="k_khoa"></div>
+    <div><label for="k_ngay">Ngày lập</label><input type="text" id="k_ngay"></div>
+    <div><label for="k_ht">P. Hiệu trưởng</label><input type="text" id="k_ht" value="Nguyễn Xuân Hiếu"></div>
+    <div><label for="k_dt">Phòng ĐT và CTHSSV</label><input type="text" id="k_dt" value="Nguyễn Trường Thi"></div>
+    <div><label for="k_tk">Trưởng khoa</label><input type="text" id="k_tk" value="Trần Phương Thuý"></div>
+  </div><div class="g3" id="k_rates"></div></div>
+  <p class="noprint" id="bkbtns" style="display:none"><button type="button" id="bkprint">In / Lưu PDF</button> <button type="button" id="bkdoc">Tải file Word (.doc)</button></p>
+  <div id="paper"></div>
+</details>
+</section>
 <p class="note noprint"><button id="print">In trang này</button></p>
 </main>
 
@@ -129,26 +156,46 @@ function parseBook(wb){
         });
       }
     });
-    out.push({name:name,month:month,dept:norm(cellText(a,/^\s*LỊCH\s+GIẢNG\s+DẠY/i)),recs:recs});
+    var d0=norm(cellText(a,/^\s*LỊCH\s+GIẢNG\s+DẠY/i));recs.forEach(function(r){r.dept=d0});out.push({name:name,month:month,dept:d0,recs:recs});
   });
   return out;
 }
 
 var SHEETS={},FN=[],IDS=[];
+var DB=null;
+function dbOpen(cb){try{var q=indexedDB.open("tkb-giang-day",1);q.onupgradeneeded=function(){q.result.createObjectStore("kv")};q.onsuccess=function(){cb(q.result)};q.onerror=function(){cb(null)}}catch(e){cb(null)}}
+function saveState(){
+  if(!DB||!Object.keys(SHEETS).length)return;
+  var F={};["k_khoa","k_ngay"].forEach(function(id){if($(id).dataset.t)F[id]=$(id).value});["k_ht","k_dt","k_tk"].forEach(function(id){F[id]=$(id).value});
+  try{DB.transaction("kv","readwrite").objectStore("kv").put({SHEETS:SHEETS,FN:FN,RATES:RATES,F:F,gv:$("gv").value,mon:$("mon").value,at:Date.now()},"state");
+    var d=new Date();$("saved").textContent="Dữ liệu đã được lưu trên trình duyệt này ("+p2(d.getHours())+":"+p2(d.getMinutes())+"), lần sau mở trang sẽ có sẵn. Bấm “Xóa hết file đã chọn” để xóa."}catch(e){}
+}
+function clearState(){try{if(DB)DB.transaction("kv","readwrite").objectStore("kv").delete("state")}catch(e){}$("saved").textContent=""}
+function loadState(cb){dbOpen(function(db){DB=db;if(!db){cb();return}
+  var g=db.transaction("kv").objectStore("kv").get("state");
+  g.onerror=function(){cb()};
+  g.onsuccess=function(){var st=g.result;if(!st||!st.SHEETS||!Object.keys(st.SHEETS).length){cb();return}
+    SHEETS=st.SHEETS;FN=st.FN||[];RATES=st.RATES||RATES;
+    Object.keys(st.F||{}).forEach(function(id){$(id).value=st.F[id];if(id==="k_khoa"||id==="k_ngay")$(id).dataset.t=1});
+    if(st.gv!=null)$("gv").value=st.gv;
+    rebuild();if(st.mon){$("mon").value=st.mon;render()}
+    var d=new Date(st.at||Date.now());$("saved").textContent="Đã nạp sẵn dữ liệu lưu lần trước ("+p2(d.getDate())+"/"+p2(d.getMonth()+1)+" lúc "+p2(d.getHours())+":"+p2(d.getMinutes())+"). Chọn thêm file để cập nhật.";cb()}
+}) }
+
 function readFile(file){return new Promise(function(res,rej){var fr=new FileReader();
   fr.onload=function(e){try{res({file:file,sheets:parseBook(XLSX.read(new Uint8Array(e.target.result),{type:"array"}))})}catch(x){rej(file.name)}};
   fr.onerror=function(){rej(file.name)};fr.readAsArrayBuffer(file)})}
 
 function addBook(x){
   var copy=/\(\d+\)\s*$/, grp={}, t=x.file.lastModified||0;
-  FN.push(x.file.name);
+  if(FN.indexOf(x.file.name)<0)FN.push(x.file.name);
   x.sheets.forEach(function(s){var g=s.dept+"|"+s.month;(grp[g]=grp[g]||[]).push(s)});
   Object.keys(grp).forEach(function(g){
     var arr=grp[g], pick=arr[0];
     arr.forEach(function(s){if(copy.test(pick.name)&&!copy.test(s.name))pick=s});
     arr.forEach(function(s){
       var id=s.dept+"|"+s.month+"|"+norm(s.name);
-      if(!SHEETS[id]||t>=SHEETS[id].t)SHEETS[id]={t:t,file:x.file.name,name:s.name,month:s.month,recs:s.recs,on:s===pick,dup:s!==pick};
+      var old=SHEETS[id];if(!old||t>=old.t){var same=old&&old.file===x.file.name&&old.t===t;SHEETS[id]={t:t,file:x.file.name,name:s.name,month:s.month,recs:s.recs,on:same?old.on:s===pick,dup:same?old.dup:s!==pick,src:x.src||""}}
     });
   });
 }
@@ -175,7 +222,26 @@ function rebuild(){
     return '<label style="display:block;margin:4px 0"><input type="checkbox" data-i="'+i+'"'+(s.on?' checked':'')+'> '+esc(s.file)+' · '+esc(s.name)+' · tháng '+s.month+' · '+s.recs.length+' dòng'+(s.dup?' <span class="warn">(cùng khoa, cùng tháng với sheet khác nên đang tắt; bật nếu đây mới là bản đúng)</span>':'')+'</label>'}).join("");
   $("sheets").innerHTML=IDS.length?'<details'+(open||dup?' open':'')+'><summary>Các sheet đang dùng ('+on+'/'+IDS.length+')'+(dup?' <span class="warn">– cần kiểm tra</span>':'')+'</summary>'+li+'</details>':"";
   if(merged.length)$("sheets").innerHTML+='<p class="note">Đã gộp các tên chỉ khác dấu: '+merged.join("; ")+'.</p>';
-  render();
+  render();saveState();
+}
+
+
+function autoLoad(){
+  if(typeof fetch!=="function")return;
+  fetch("data/index.json",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(ix){
+    var list=(ix.files||[]).map(function(f){return typeof f==="string"?{name:f,t:0}:f}),want={},todo=[],removed=false;
+    list.forEach(function(f){want[f.name]=1});
+    Object.keys(SHEETS).forEach(function(id){if(SHEETS[id].src==="repo"&&!want[SHEETS[id].file]){delete SHEETS[id];removed=true}});
+    list.forEach(function(f){var have=Object.keys(SHEETS).some(function(id){var s=SHEETS[id];return s.src==="repo"&&s.file===f.name&&s.t===f.t});if(!have)todo.push(f)});
+    return Promise.all(todo.map(function(f){
+      return fetch("data/"+encodeURIComponent(f.name)+"?v="+f.t).then(function(r){if(!r.ok)throw f.name;return r.arrayBuffer()}).then(function(buf){
+        return {file:{name:f.name,lastModified:f.t},src:"repo",sheets:parseBook(XLSX.read(new Uint8Array(buf),{type:"array"}))}})
+    })).then(function(got){
+      got.forEach(addBook);
+      if(got.length||removed)rebuild();
+      if(list.length)$("repoinfo").textContent="Đã nạp tự động "+list.length+" file lịch từ thư mục data/ của kho"+(got.length?" ("+got.length+" file mới hoặc đã đổi).":".");
+    });
+  }).catch(function(e){if(typeof e==="string")$("repoinfo").textContent="Không tải được file “"+e+"” trong thư mục data/ của kho."});
 }
 
 function load(files){
@@ -185,7 +251,7 @@ function load(files){
   },function(bad){$("out").innerHTML='<p class="msg warn">Không đọc được file "'+esc(bad)+'". Hãy kiểm tra đây là file lịch giảng dạy .xlsx của trường.</p>'});
 }
 
-function render(){
+function renderMain(){
   var out=$("out");
   if(!REC.length){out.innerHTML='<p class="msg warn">Không tìm thấy dữ liệu giảng dạy trong file. Lịch cần có tiêu đề “THÁNG …” ở ô A5 và ngày ở hàng 8.</p>';return}
   var who=norm($("gv").value), mf=$("mon").value;
@@ -216,7 +282,87 @@ function render(){
   h+='<h2>Chi tiết từng buổi</h2><div class="wrap" style="max-height:480px"><table><tr><th>Ngày</th><th>Thứ</th><th>Ca/Tiết</th><th>Lớp</th><th>Môn/Mô đun</th><th>Phòng</th><th class="n">Số tiết</th></tr>'+
     rows.map(function(r){return '<tr><td>'+fmt(r.date)+'</td><td>'+r.thu+'</td><td>'+esc(r.ca)+'</td><td>'+esc(r.cls)+'</td><td'+(r.shl?' class="shl"':'')+'>'+esc(r.subj)+'</td><td>'+esc(r.room)+'</td><td class="n">'+r.n+'</td></tr>'}).join("")+'</table></div>';
   h+='<p class="note">Các dòng trùng giữa sheet tổng của Khoa và sheet từng trung tâm chỉ được tính một lần. Lớp ghép (cùng giáo viên, ngày, ca nhưng ghi ở nhiều lớp) cũng chỉ tính một lần và hiện tên lớp nối bằng dấu “ + ”.</p>';
-  out.innerHTML=h;
+  var pt=h.split("<h2>");
+  out.innerHTML='<h2>'+pt[1]+pt.slice(2).map(function(x,i){var t=x.split("</h2>"),k="s"+i,op=OPEN[k]===undefined?i===0:OPEN[k];
+    return '<details data-k="'+k+'"'+(op?' open':'')+'><summary>'+t[0]+'</summary>'+t.slice(1).join("</h2>")+'</details>'}).join("");
+}
+
+var OPEN={};
+var CENT=[["ba don","Ba Đồn"],["bo trach","Bố Trạch"],["tuyen hoa","Tuyên Hóa"],["huong hoa","Hướng Hóa"],["dakrong","Đakrông"],["le thuy","Lệ Thủy"],["quang trach","Quảng Trạch"],["quang ninh","Quảng Ninh"],["minh hoa","Minh Hóa"],["trieu hai","Triệu Hải"],["vinh linh","Vĩnh Linh"]];
+var GEN=["tin học","giáo dục chính trị","pháp luật","giáo dục thể chất","giáo dục quốc phòng và an ninh","tiếng anh"], BKNAME="";
+function centerOf(room){var s=strip(room);if(!s||s.indexOf("online")>=0)return null;for(var i=0;i<CENT.length;i++)if(s.indexOf(CENT[i][0])>=0)return CENT[i][1];return null}
+function cleanCls(c){return String(c).replace(/\s*-\s*/g," ").replace(/\s*&\s*/g,"&").replace(/\s+/g," ").trim()}
+function deptLabel(d){return String(d).replace(/^lịch giảng dạy\s*(khoa\s*)?/,"").split(" ").map(function(w){return w==="và"?w:w.charAt(0).toUpperCase()+w.slice(1)}).join(" ")}
+var RATES={"Ba Đồn":"200000","Minh Hóa":"300000","Lệ Thủy":"200000","Vĩnh Linh":"300000"};
+function money(v){return parseInt(String(v||"").replace(/\D/g,""),10)||0}
+function fm(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,".")}
+function vnWords(n){
+  if(!n)return "Không";
+  var D=["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"],U=["","nghìn","triệu","tỷ"],g=[],parts=[],i;
+  function three(x,full){var t=Math.floor(x/100),c=Math.floor(x%100/10),u=x%10,r=[];
+    if(t>0||full)r.push(D[t]+" trăm");
+    if(c>1){r.push(D[c]+" mươi");if(u===1)r.push("mốt");else if(u===5)r.push("lăm");else if(u>0)r.push(D[u])}
+    else if(c===1){r.push("mười");if(u===5)r.push("lăm");else if(u>0)r.push(D[u])}
+    else if(u>0){if(t>0||full)r.push("lẻ");r.push(D[u])}
+    return r.join(" ")}
+  while(n>0){g.push(n%1000);n=Math.floor(n/1000)}
+  for(i=g.length-1;i>=0;i--){if(g[i]===0)continue;parts.push(three(g[i],i<g.length-1)+(U[i]?" "+U[i]:""))}
+  var t=parts.join(" ");return t.charAt(0).toUpperCase()+t.slice(1)}
+function p2(n){return (n<10?"0":"")+n}
+function render(){renderMain();renderBK()}
+
+function renderBK(){
+  var box=$("bk"),who=norm($("gv").value),mf=$("mon").value,P=$("paper"),btn=$("bkbtns");
+  var rows=who?REC.filter(function(r){return norm(r.teacher)===who&&(!mf||r.m==mf)}):[];
+  if(!rows.length){box.style.display="none";return}
+  box.style.display="block";BKNAME=rows[0].teacher.replace(/\s+/g,"_");
+  if(!mf){$("bkmsg").textContent="Hãy chọn một tháng cụ thể ở ô “Tháng” để lập bảng kê.";P.innerHTML="";btn.style.display="none";return}
+  var cr=rows.filter(function(r){return centerOf(r.room)});
+  if(!cr.length){$("bkmsg").textContent="Tháng này không có buổi dạy nào ở trung tâm liên kết (không tính các buổi dạy online).";P.innerHTML="";btn.style.display="none";return}
+  $("bkmsg").textContent="Gồm mọi buổi dạy tại trung tâm liên kết trong các lịch đã chọn (kể cả lớp thuộc khoa khác), không tính buổi dạy online. Có thể sửa các ô bên dưới trước khi in.";
+  btn.style.display="block";
+  var nx=new Date(cr[0].date.getFullYear(),+mf,2);
+  if(!$("k_khoa").dataset.t)$("k_khoa").value="Du lịch - Dịch vụ và Cơ bản";
+  if(!$("k_ngay").dataset.t)$("k_ngay").value="Ngày "+p2(nx.getDate())+" tháng "+p2(nx.getMonth()+1)+" năm "+nx.getFullYear();
+  var days={},order=[],pairs={},plist=[],cent={},clist=[];
+  cr.forEach(function(r){var k=iso(r.date),o=days[k];if(!o){o=days[k]={d:r.date,n:0,it:{},lines:[]};order.push(k)}
+    o.n+=r.n;var ce=centerOf(r.room),cl=cleanCls(r.cls),ik=r.subj+"|"+cl+"|"+ce;
+    var cd=cent[ce]||(cent[ce]={days:{},cls:[],cp:{}});cd.days[k]=1;if(!cd.cp[cl]){cd.cp[cl]=1;cd.cls.push(cl)}if(clist.indexOf(ce)<0)clist.push(ce);
+    if(!o.it[ik]){o.it[ik]=1;var gen=GEN.indexOf(norm(r.subj))>=0&&norm(cl).indexOf("tin học")<0;
+      o.lines.push((gen?"Môn":"Mô đun")+": "+esc(r.subj)+" lớp "+esc(cl)+" tại TT GDNN – GDTX "+esc(ce)+".")}
+    var pk=cl+"|"+ce;if(!pairs[pk]){pairs[pk]=1;plist.push("lớp "+esc(cl)+" tại TT GDNN – GDTX "+esc(ce))}});
+  order.sort();
+  var tot=0,body=order.map(function(k){var o=days[k];tot+=o.n;
+    return '<tr><td style="text-align:center">'+fmt(o.d)+'</td><td>'+o.lines.join("<br>")+'</td><td style="text-align:center">'+o.n+'</td><td style="text-align:center">01</td><td></td></tr>'}).join("");
+  var khoa=esc($("k_khoa").value), d1=days[order[0]].d, d2=days[order[order.length-1]].d, nm=esc(rows[0].teacher);
+  var xn='<div style="font-size:10pt"><table class="nb" style="width:100%;border:none"><tr><td style="text-align:center;width:42%">TRƯỜNG CĐN QUẢNG TRỊ<br><b>KHOA '+khoa.toUpperCase()+'</b></td><td style="text-align:center"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><u>Độc lập – Tự do – Hạnh phúc</u></b></td></tr></table>'+
+    '<p style="text-align:center;font-weight:bold;font-size:1.15em;margin:8px 0 6px">BẢN XÁC NHẬN THỜI GIAN ĐI GIẢNG DẠY</p>'+
+    '<p style="margin:2px 0">Tôi tên là: <b>'+nm+'</b></p><p style="margin:2px 0">Giáo viên tại khoa: '+khoa+'</p>'+
+    '<p style="margin:2px 0">Thực hiện kế hoạch giảng dạy từ ngày: '+p2(d1.getDate())+"/"+p2(d1.getMonth()+1)+' – '+fmt(d2)+'</p>'+
+    '<p style="margin:2px 0 8px">Tôi đã thực hiện và hoàn thành công tác giảng dạy '+plist.join(", ")+', cụ thể như sau:</p>'+
+    '<table border="1" cellpadding="2" style="border-collapse:collapse;width:100%"><tr><th style="width:13%">Ngày tháng năm</th><th style="width:60%">Mô đun</th><th style="width:10%">Số tiết<br>(Tiết)</th><th style="width:10%">Số lượng<br>(ngày)</th><th style="width:7%">Ghi chú</th></tr>'+body+
+    '<tr><td colspan="2" style="text-align:center"><b>Tổng cộng</b></td><td style="text-align:center"><b>'+tot+'</b></td><td style="text-align:center"><b>'+p2(order.length)+'</b></td><td></td></tr></table>'+
+    '<p style="margin:10px 0 0">Kính đề nghị Khoa '+khoa+', Phòng Đào tạo và CTHSSV xác nhận để làm cơ sở thanh toán.</p>'+
+    '<p style="text-align:right;margin:4px 0"><i>'+esc($("k_ngay").value)+'</i></p>'+
+    '<table class="nb" style="width:100%;border:none;text-align:center"><tr><td style="width:22%"><b>P. Hiệu trưởng</b></td><td style="width:30%"><b>Phòng ĐT và CTHSSV</b></td><td style="width:24%"><b>Trưởng khoa</b></td><td style="width:24%"><b>Người đề nghị</b></td></tr>'+
+    '<tr><td style="height:20px"></td><td></td><td></td><td></td></tr><tr><td style="white-space:nowrap">'+esc($("k_ht").value)+'</td><td style="white-space:nowrap">'+esc($("k_dt").value)+'</td><td style="white-space:nowrap">'+esc($("k_tk").value)+'</td><td style="white-space:nowrap">'+nm+'</td></tr></table></div>';
+  var kr=$("k_rates"),sig=clist.join("|");
+  if(kr.dataset.sig!==sig){kr.dataset.sig=sig;kr.innerHTML=clist.map(function(c){return '<div><label>Đơn giá/ngày – TT '+esc(c)+' (đ)</label><input type="text" inputmode="numeric" data-c="'+esc(c)+'" value="'+esc(RATES[c]||"")+'"></div>'}).join("")}
+  var sum=0,miss=[],kb=clist.map(function(c,i){var cd=cent[c],nd=Object.keys(cd.days).length,rt=money(RATES[c]),am=nd*rt;sum+=am;if(!rt)miss.push(c);
+    return '<tr><td style="text-align:center">'+(i+1)+'</td><td>Hỗ trợ giảng dạy lớp '+esc(cd.cls.join(", "))+' tại TT GDNN – GDTX '+esc(c)+' ('+nd+' ngày x '+fm(rt)+'đ)</td><td style="text-align:right">'+fm(am)+'</td><td></td></tr>'}).join("");
+  if(miss.length)$("bkmsg").textContent+=" Hãy nhập đơn giá/ngày cho: "+miss.join(", ")+".";
+  var ks=/^du lịch - dịch vụ và cơ bản$/i.test($("k_khoa").value.trim())?"DL - DV VÀ CƠ BẢN":khoa.toUpperCase(), tw=vnWords(sum)+" đồng chẵn";
+  var hd='<table class="nb" style="width:100%;border:none"><tr><td>TRƯỜNG CAO ĐẲNG NGHỀ QUẢNG TRỊ<br><b>KHOA '+ks+'</b></td>'+'__R__'+'</tr></table>';
+  var sg='<table class="nb" style="width:100%;border:none;text-align:center"><tr><td><b>Hiệu trưởng</b></td><td><b>Kế toán trưởng</b></td><td><b>Trưởng khoa</b></td><td><b>Người đề nghị</b></td></tr><tr><td style="height:80px"></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td>'+esc($("k_tk").value)+'</td><td>'+nm+'</td></tr></table>';
+  var dl='<p style="text-align:right;margin:8px 0"><i>'+esc($("k_ngay").value)+'</i></p>', tt='font-weight:bold;font-size:1.15em;text-align:center;margin:16px 0 10px', nd='Tiền hỗ trợ giảng dạy các '+plist.join(", ")+'.';
+  var g1=hd.replace('__R__','')+'<p style="'+tt+'">GIẤY ĐỀ NGHỊ THANH TOÁN</p><p style="margin:2px 0">Kính gửi: &nbsp;- Hiệu trưởng Trường CĐN Quảng Trị<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Phòng Tổng hợp</p><p style="margin:2px 0">Số:............</p>'+
+    '<p style="margin:2px 0">Họ và tên người đề nghị thanh toán: <b>'+nm+'</b></p><p style="margin:2px 0">Bộ phận (hoặc địa chỉ): Khoa '+khoa+'</p><p style="margin:2px 0">Nội dung thanh toán: '+nd+'</p>'+
+    '<p style="margin:2px 0">Số tiền: <b>'+fm(sum)+' đ</b></p><p style="margin:2px 0">Bằng chữ: '+tw+'.</p><p style="margin:2px 0">(Kèm theo.............chứng từ gốc)</p>'+dl+sg;
+  var g2=hd.replace('__R__','<td style="text-align:right;vertical-align:bottom">Nợ:............<br>Có:............</td>')+'<p style="'+tt+'">BẢNG KÊ ĐỀ NGHỊ THANH TOÁN</p>'+
+    '<p style="margin:2px 0">Họ tên người đề nghị thanh toán: <b>'+nm+'</b></p><p style="margin:2px 0">Nội dung công việc: '+nd+'</p><p style="margin:2px 0 8px">Thời gian thực hiện: Tháng '+p2(+mf)+' năm '+cr[0].date.getFullYear()+'</p>'+
+    '<table border="1" cellpadding="4" style="border-collapse:collapse;width:100%"><tr><th>STT</th><th>Nội dung chi</th><th>Số tiền</th><th>Ghi chú</th></tr>'+kb+'<tr><td></td><td style="text-align:right"><b>Tổng:</b></td><td style="text-align:right"><b>'+fm(sum)+'</b></td><td></td></tr></table>'+
+    '<p style="margin:8px 0 2px">Kèm theo:..................................chứng từ gốc</p><p style="margin:2px 0">Số tiền đề nghị thanh toán (viết bằng chữ): '+tw+'</p>'+dl+sg;
+  P.innerHTML='<div class="pg" style="page-break-after:always">'+g1+'</div><div class="pg" style="page-break-after:always">'+g2+'</div><div class="pg">'+xn+'</div>';
 }
 
 function renderAll(mf){
@@ -235,14 +381,26 @@ var drop=$("drop"),fi=$("file");
 drop.addEventListener("click",function(){fi.click()});
 drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
 fi.addEventListener("change",function(){if(fi.files.length){load(fi.files);fi.value=""}});
-$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
+$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
 ["dragover","dragenter"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.add("over")})});
 ["dragleave","drop"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove("over")})});
 drop.addEventListener("drop",function(e){var f=e.dataTransfer.files;if(f.length)load(f)});
 $("sheets").addEventListener("change",function(e){var i=e.target.getAttribute("data-i");if(i!==null){SHEETS[IDS[+i]].on=e.target.checked;rebuild()}});
-$("gv").addEventListener("input",render);
-$("mon").addEventListener("change",render);
+$("out").addEventListener("toggle",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)OPEN[k]=e.target.open},true);
+$("gv").addEventListener("input",function(){render();saveState()});
+["k_khoa","k_ngay","k_ht","k_dt","k_tk"].forEach(function(id){$(id).addEventListener("input",function(){this.dataset.t=1;renderBK();saveState()})});
+$("k_rates").addEventListener("input",function(e){var c=e.target.getAttribute("data-c");if(c){RATES[c]=e.target.value;renderBK();saveState()}});
+$("bkprint").addEventListener("click",function(){document.body.classList.add("pp");window.print();document.body.classList.remove("pp")});
+$("bkdoc").addEventListener("click",function(){
+  var BR='<br clear="all" style="mso-special-character:line-break;page-break-before:always">',
+    pgs=[].slice.call($("paper").querySelectorAll(".pg")).map(function(e){return e.innerHTML}).join(BR);
+  var h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page Section1{size:21cm 29.7cm;margin:0.9cm 1.5cm 0.8cm 2cm}div.Section1{page:Section1}body{font-family:"Times New Roman";font-size:12pt}p{margin:1pt 0;line-height:1.05}table{border-collapse:collapse}td,th{border:1px solid #000;padding:2px 5px}.nb td{border:none}</style></head><body><div class="Section1">'+pgs+'</div></body></html>';
+  var b=new Blob(["\ufeff"+h],{type:"application/msword"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(b);a.download="BanXacNhan_"+BKNAME+"_T"+$("mon").value+".doc";document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},2000)});
+$("mon").addEventListener("change",function(){render();saveState()});
 $("print").addEventListener("click",function(){window.print()});
+loadState(autoLoad);
 </script>
 </body>
 </html>
