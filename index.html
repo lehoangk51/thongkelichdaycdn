@@ -52,8 +52,9 @@ details>*:not(summary){margin:12px 14px}
 #paper th,#paper td{background:#fff;color:#000;white-space:normal;border:1px solid #000;padding:5px 8px;position:static;vertical-align:top}
 #paper .nb td{border:none}
 .pg+.pg{border-top:2px dashed #999;margin-top:26px;padding-top:22px}
+#clout td,#clout th{white-space:normal;vertical-align:top;min-width:96px}#clout td.d{white-space:nowrap;min-width:0}.tk{margin:0 0 8px}.tk:last-child{margin-bottom:0}.tk small{color:var(--muted);display:block}
 @page{size:A4;margin:15mm 15mm 15mm 20mm}
-@media print{body.pp #paper{font-size:12pt}body.pp .pg+.pg{border:none;margin:0;padding:0}.panel,.noprint{display:none}body{background:#fff;color:#000}body.pp main>*:not(#bk){display:none}body.pp #paper{border:none;padding:0;margin:0}}
+@media print{body.pp #paper{font-size:12pt}body.pp .pg+.pg{border:none;margin:0;padding:0}.panel,.noprint{display:none}body{background:#fff;color:#000}body.pp main>*:not(#bk){display:none}body.pc main>*:not(#clsec){display:none}body.pc #cld>summary{display:none}body.pp #paper{border:none;padding:0;margin:0}}
 </style>
 </head>
 <body>
@@ -78,6 +79,15 @@ details>*:not(summary){margin:12px 14px}
 </section>
 
 <div id="out"><p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p></div>
+<section id="clsec">
+  <details id="cld"><summary class="noprint">Thời khóa biểu lớp theo tháng (ngày, buổi, tiết)</summary>
+  <div class="panel noprint"><div class="row">
+    <div><label for="cls">Lớp</label><select id="cls"><option value="">Chọn lớp</option></select></div>
+    <div><label for="cmon">Tháng</label><select id="cmon"></select></div>
+  </div><div><button type="button" id="clprint">In thời khóa biểu lớp</button></div></div>
+  <div id="clout"></div>
+  </details>
+</section>
 <section id="bk" style="display:none">
   <details id="bkd"><summary class="noprint">Hồ sơ thanh toán công tác phí (giấy đề nghị, bảng kê, bản xác nhận)</summary>
   <p class="note noprint" id="bkmsg"></p>
@@ -161,7 +171,7 @@ function parseBook(wb){
   return out;
 }
 
-var SHEETS={},FN=[],IDS=[];
+var SHEETS={},FN=[],IDS=[],ALL=[],CLS={};
 var DB=null;
 function dbOpen(cb){try{var q=indexedDB.open("tkb-giang-day",1);q.onupgradeneeded=function(){q.result.createObjectStore("kv")};q.onsuccess=function(){cb(q.result)};q.onerror=function(){cb(null)}}catch(e){cb(null)}}
 function saveState(){
@@ -210,6 +220,7 @@ function rebuild(){
   Object.keys(vt).forEach(function(k){var v=Object.keys(vt[k]).sort(function(x,y){return vt[k][y]-vt[k][x]});vt[k]=v[0];
     if(v.length>1)merged.push(v.slice(1).map(function(x){return "“"+esc(x)+"”"}).join(", ")+" vào “"+esc(v[0])+"”")});
   REC.forEach(function(r){r.teacher=vt[strip(r.orig)];names[r.teacher]=1;months[r.m]=1;r.cls0=r.cls0||r.cls;r.cls=r.cls0});
+  ALL=REC.slice();
   var s2={},R2=[];
   REC.forEach(function(r){var k=iso(r.date)+"|"+r.ca.replace(/\s+/g,"").toUpperCase()+"|"+norm(r.teacher),f=s2[k];
     if(!f){s2[k]=r;R2.push(r)}else if(f.cls.split(" + ").indexOf(r.cls0)<0)f.cls+=" + "+r.cls0});
@@ -222,7 +233,7 @@ function rebuild(){
     return '<label style="display:block;margin:4px 0"><input type="checkbox" data-i="'+i+'"'+(s.on?' checked':'')+'> '+esc(s.file)+' · '+esc(s.name)+' · tháng '+s.month+' · '+s.recs.length+' dòng'+(s.dup?' <span class="warn">(cùng khoa, cùng tháng với sheet khác nên đang tắt; bật nếu đây mới là bản đúng)</span>':'')+'</label>'}).join("");
   $("sheets").innerHTML=IDS.length?'<details'+(open||dup?' open':'')+'><summary>Các sheet đang dùng ('+on+'/'+IDS.length+')'+(dup?' <span class="warn">– cần kiểm tra</span>':'')+'</summary>'+li+'</details>':"";
   if(merged.length)$("sheets").innerHTML+='<p class="note">Đã gộp các tên chỉ khác dấu: '+merged.join("; ")+'.</p>';
-  render();saveState();
+  buildClasses();render();saveState();
 }
 
 
@@ -331,7 +342,7 @@ function vnWords(n){
   for(i=g.length-1;i>=0;i--){if(g[i]===0)continue;parts.push(three(g[i],i<g.length-1)+(U[i]?" "+U[i]:""))}
   var t=parts.join(" ");return t.charAt(0).toUpperCase()+t.slice(1)}
 function p2(n){return (n<10?"0":"")+n}
-function render(){renderMain();renderBK()}
+function render(){renderMain();renderBK();renderClass()}
 
 function renderBK(){
   var box=$("bk"),who=norm($("gv").value),mf=$("mon").value,P=$("paper"),btn=$("bkbtns");
@@ -403,7 +414,7 @@ var drop=$("drop"),fi=$("file");
 drop.addEventListener("click",function(){fi.click()});
 drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
 fi.addEventListener("change",function(){if(fi.files.length){load(fi.files);fi.value=""}});
-$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
+$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];ALL=[];buildClasses();renderClass();clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
 ["dragover","dragenter"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.add("over")})});
 ["dragleave","drop"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove("over")})});
 drop.addEventListener("drop",function(e){var f=e.dataTransfer.files;if(f.length)load(f)});
@@ -420,6 +431,55 @@ $("bkdoc").addEventListener("click",function(){
   var b=new Blob(["\ufeff"+h],{type:"application/msword"}),a=document.createElement("a");
   a.href=URL.createObjectURL(b);a.download="BanXacNhan_"+BKNAME+"_T"+$("mon").value+".doc";document.body.appendChild(a);a.click();a.remove();
   setTimeout(function(){URL.revokeObjectURL(a.href)},2000)});
+
+/* ===== Thời khóa biểu lớp theo tháng ===== */
+function clsKey(c){return strip(cleanCls(c))}
+function buoiOf(ca){var c=String(ca).trim().charAt(0).toUpperCase();return c==="S"||c==="C"||c==="T"?c:"S"}
+function tietOf(ca){var m=String(ca).match(/\(([^)]*)\)/);return m?m[1].replace(/\s+/g,"").replace("-","–"):""}
+function buildClasses(){
+  CLS={};
+  ALL.forEach(function(r){var k=clsKey(r.cls0),o=CLS[k];if(!o)o=CLS[k]={name:String(r.cls0).replace(/\s+/g," ").trim(),recs:[]};o.recs.push(r)});
+  var sel=$("cls"),cur=sel.value,ks=Object.keys(CLS).sort(function(a,b){return CLS[a].name.localeCompare(CLS[b].name,"vi")});
+  sel.innerHTML='<option value="">Chọn lớp ('+ks.length+' lớp)</option>'+ks.map(function(k){return '<option value="'+esc(k)+'">'+esc(CLS[k].name)+'</option>'}).join("");
+  sel.value=CLS[cur]?cur:"";
+}
+function renderClass(){
+  var k=$("cls").value,out=$("clout"),msel=$("cmon");
+  if(!k||!CLS[k]){msel.innerHTML="";msel.dataset.sig="";out.innerHTML='<p class="msg">'+(ALL.length?'Chọn lớp để xem thời khóa biểu theo tháng.':'Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.')+'</p>';return}
+  var ms={};CLS[k].recs.forEach(function(r){ms[r.m]=1});
+  var mk=Object.keys(ms).map(Number).sort(function(a,b){return a-b}),sig=mk.join(","),cur=msel.value;
+  if(msel.dataset.sig!==sig){msel.dataset.sig=sig;msel.innerHTML=mk.map(function(m){return '<option value="'+m+'">Tháng '+m+'</option>'}).join("");cur=String(mk[mk.length-1])}
+  msel.value=cur;var mo=+msel.value;
+  /* gộp các dòng trùng (cùng ngày, buổi, môn) giữa sheet của Khoa và sheet trung tâm */
+  var seen={},rows=[];
+  CLS[k].recs.filter(function(r){return r.m===mo}).sort(function(a,b){return a.date-b.date||a.ca.localeCompare(b.ca)}).forEach(function(r){
+    var key=iso(r.date)+"|"+r.ca.replace(/\s+/g,"").toUpperCase()+"|"+norm(r.subj),f=seen[key];
+    if(!f){f=seen[key]={r:r,t:[r.teacher],rooms:r.room?[String(r.room)]:[]};rows.push(f)}
+    else{if(f.t.indexOf(r.teacher)<0)f.t.push(r.teacher);if(r.room&&f.rooms.indexOf(String(r.room))<0)f.rooms.push(String(r.room))}
+  });
+  if(!rows.length){out.innerHTML='<p class="msg warn">Lớp này không có tiết nào trong tháng '+mo+'.</p>';return}
+  var days={},order=[],bs={},hasT=false,tot=0,subj={},sk=[];
+  rows.forEach(function(f){var r=f.r,d=iso(r.date),b=buoiOf(r.ca),o=days[d];
+    if(!o){o=days[d]={date:r.date,thu:r.thu,S:[],C:[],T:[]};order.push(d)}
+    o[b].push(f);if(b==="T")hasT=true;bs[d+b]=1;tot+=r.n;
+    var sj=norm(r.subj),x=subj[sj];if(!x){x=subj[sj]={name:r.subj,n:0,b:{},t:[]};sk.push(sj)}
+    x.n+=r.n;x.b[d+b]=1;f.t.forEach(function(t){if(x.t.indexOf(t)<0)x.t.push(t)});
+  });
+  order.sort();
+  var cell=function(a){return a.map(function(f){var r=f.r;
+    return '<div class="tk"><b>'+esc(r.subj)+'</b><small>Tiết '+esc(tietOf(r.ca))+' ('+r.n+' tiết)</small><small>'+esc(f.t.join(" + "))+(f.rooms.length?' · '+esc(f.rooms.join(", ")):'')+'</small></div>'}).join("")};
+  var body=order.map(function(d){var o=days[d];
+    return '<tr><td class="d"><b>'+fmt(o.date)+'</b></td><td class="d">'+o.thu+'</td><td>'+cell(o.S)+'</td><td>'+cell(o.C)+'</td>'+(hasT?'<td>'+cell(o.T)+'</td>':'')+'</tr>'}).join("");
+  var sb=sk.map(function(s){var x=subj[s];return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.t.join(", "))+'</td><td class="n">'+Object.keys(x.b).length+'</td><td class="n">'+x.n+'</td></tr>'}).join("");
+  out.innerHTML='<h2>Lớp '+esc(CLS[k].name)+' – tháng '+mo+'</h2>'+
+    '<div class="tot"><div><strong>'+order.length+'</strong><span>ngày có học</span></div><div><strong>'+Object.keys(bs).length+'</strong><span>buổi (ca)</span></div><div><strong>'+tot+'</strong><span>tiết</span></div></div>'+
+    '<h2>Thời khóa biểu theo ngày</h2><div class="wrap"><table><tr><th>Ngày</th><th>Thứ</th><th>Sáng</th><th>Chiều</th>'+(hasT?'<th>Tối</th>':'')+'</tr>'+body+'</table></div>'+
+    '<h2>Tổng hợp theo môn/mô đun</h2><div class="wrap"><table><tr><th>Môn/Mô đun</th><th>Giáo viên</th><th class="n">Số buổi</th><th class="n">Số tiết</th></tr>'+sb+'<tr class="sum"><td>Cộng</td><td></td><td class="n">'+Object.keys(bs).length+'</td><td class="n">'+tot+'</td></tr></table></div>'+
+    '<p class="note">Tiết sinh hoạt lớp không được thống kê. Các dòng trùng giữa sheet của Khoa và sheet trung tâm chỉ hiện một lần.</p>';
+}
+$("cls").addEventListener("change",renderClass);
+$("cmon").addEventListener("change",renderClass);
+$("clprint").addEventListener("click",function(){var d=$("cld");d.open=true;document.body.classList.add("pc");window.print();document.body.classList.remove("pc")});
 $("mon").addEventListener("change",function(){render();saveState()});
 $("print").addEventListener("click",function(){window.print()});
 loadState(autoLoad);
