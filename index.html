@@ -4,106 +4,251 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Thống kê giảng dạy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{--bg:#f6f7f4;--card:#fff;--fg:#1d2a2e;--muted:#5d6b70;--line:#d9dfdc;--accent:#0f5c63;--accent-fg:#fff;--soft:#e4eeee;--warn:#8a5a00;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13191b;--card:#1b2427;--fg:#e6ecec;--muted:#93a3a6;--line:#2c393c;--accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#223235;--warn:#e0b050;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#13191b;--card:#1b2427;--fg:#e6ecec;--muted:#93a3a6;--line:#2c393c;--accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#223235;--warn:#e0b050;color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+:root{
+  --bg:#f2f5f3;--card:#fff;--fg:#14262a;--muted:#5a6b70;--line:#dce4e1;
+  --accent:#0f5c63;--accent-fg:#fff;--soft:#e5efee;--warn:#8a5a00;
+  --side:#0c383d;--side-fg:#bcd6d5;--side-act:#164e55;--chalk:#f0cb55;
+  --b-s:#fbf0c9;--b-c:#dcebea;--b-t:#e3e4f4;
+  --r:12px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1517;--card:#172023;--fg:#e6ecec;--muted:#93a3a6;--line:#27363a;
+  --accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#1f2f31;--warn:#e0b050;
+  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#3a3418;--b-c:#1d3436;--b-t:#272a45;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1517;--card:#172023;--fg:#e6ecec;--muted:#93a3a6;--line:#27363a;
+  --accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#1f2f31;--warn:#e0b050;
+  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#3a3418;--b-c:#1d3436;--b-t:#272a45;color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Be Vietnam Pro","Segoe UI",Roboto,Arial,sans-serif}
-main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:-.01em}
-h2{font-size:1.1rem;margin:28px 0 8px}
-p.sub{margin:0 0 16px;color:var(--muted);max-width:60ch}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:14px}
-.drop{border:2px dashed var(--line);border-radius:8px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
-.drop.over,.drop:focus-visible{border-color:var(--accent);background:var(--soft);outline:none}
-.drop b{color:var(--fg)}
-label{font-weight:600;display:block;margin-bottom:4px}
-input[type=text],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
-input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+html{scroll-padding-top:12px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 "Be Vietnam Pro","Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+h1{font-size:1.55rem;line-height:1.25;margin:0;letter-spacing:-.01em;font-weight:700}
+h2{font-size:1.08rem;margin:26px 0 10px;font-weight:600}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- khung ứng dụng ---------- */
+.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;background:var(--side);color:var(--side-fg);display:flex;flex-direction:column;padding:22px 14px 16px}
+.brand{display:flex;gap:11px;align-items:center;padding:0 8px 22px;color:#fff}
+.brand .logo{width:38px;height:38px;border-radius:10px;background:var(--chalk);color:#0c383d;display:grid;place-items:center;flex:none}
+.brand b{display:block;font-size:1rem;line-height:1.25;font-weight:600}
+.brand small{display:block;font-size:.78rem;opacity:.72;line-height:1.3}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{position:relative;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border:0;border-radius:10px;background:none;color:inherit;font-weight:500;font-size:.96rem}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button[aria-current="page"]{background:var(--side-act);color:#fff}
+.nav button[aria-current="page"]::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:4px;border-radius:0 4px 4px 0;background:var(--chalk)}
+.nav .s{display:none}
+.nav hr{border:0;border-top:1px solid rgba(255,255,255,.12);margin:10px 8px}
+.sidefoot{margin-top:auto;padding:14px 8px 0;border-top:1px solid rgba(255,255,255,.12);font-size:.84rem;display:grid;gap:10px}
+.sidefoot #navstat{line-height:1.4}
+.themebtn{border:1px solid rgba(255,255,255,.2);background:none;color:inherit;border-radius:8px;padding:6px 10px;font-size:.84rem;text-align:left}
+.themebtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.top{display:none}
+.main{min-width:0;width:100%;max-width:1120px;padding:30px 36px 64px}
+
+/* ---------- đầu mỗi mục ---------- */
+.vh{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.vh p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- thành phần ---------- */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:14px}
+.filters{margin:0 0 18px}
 .row{display:grid;grid-template-columns:1fr;gap:12px}
-@media(min-width:640px){.row{grid-template-columns:2fr 1fr}}
-.tot{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
-.tot div{flex:1 1 140px;background:var(--soft);border-radius:8px;padding:10px 14px}
-.tot strong{display:block;font-size:1.7rem;line-height:1.2;color:var(--accent)}
+@media(min-width:700px){.row{grid-template-columns:2fr 1fr auto;align-items:end}.row.two{grid-template-columns:2fr 1fr}}
+label{font-weight:600;display:block;margin-bottom:5px;font-size:.92rem}
+input[type=text],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;min-height:44px}
+input:focus-visible,select:focus-visible,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.btn,.acts button,.panel button{border:1px solid var(--line);background:var(--card);padding:9px 14px;border-radius:9px;min-height:44px;font-weight:500}
+button.btn:hover,.acts button:hover,.panel button:hover{border-color:var(--accent);color:var(--accent)}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+button.pri:hover{color:var(--accent-fg);filter:brightness(1.08)}
+.lk{border:0!important;background:none!important;color:var(--accent);padding:0!important;min-height:0!important;text-decoration:underline;font:inherit;font-weight:500;cursor:pointer}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:30px 20px;text-align:center;cursor:pointer;color:var(--muted);background:var(--bg)}
+.drop svg.i{width:32px;height:32px;color:var(--accent);margin-bottom:6px}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--soft)}
+.drop b{color:var(--fg);font-weight:600;word-break:break-word}
+.note{color:var(--muted);font-size:.9rem;margin:6px 0 0}
+.msg{padding:14px 16px;border-radius:var(--r);background:var(--soft);margin:0}
+.empty{padding:34px 20px;text-align:center;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted)}
+.empty b{display:block;color:var(--fg);font-size:1.05rem;margin-bottom:4px}
+.warn{color:var(--warn)}
+
+.tot{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:4px 0 6px}
+.tot div{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 14px}
+.tot strong{display:block;font-size:1.75rem;line-height:1.2;color:var(--accent);font-variant-numeric:tabular-nums}
 .tot span{color:var(--muted);font-size:.9rem}
-.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
-table{border-collapse:collapse;width:100%;font-size:.93rem}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child>td{border-bottom:0}
 th{background:var(--soft);font-weight:600;position:sticky;top:0}
+tbody tr:hover td,table tr:hover>td{background:color-mix(in srgb,var(--soft) 55%,transparent)}
 td.n,th.n{text-align:right}
 tr.sum td{font-weight:700;background:var(--soft)}
 td.shl{color:var(--muted)}
-.note{color:var(--muted);font-size:.9rem;margin:6px 0 0}
-.msg{padding:14px;border-radius:8px;background:var(--soft)}
-.warn{color:var(--warn)}
-.lk{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline;font:inherit;cursor:pointer}
-button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer}
-details{border:1px solid var(--line);border-radius:8px;background:var(--card);margin:10px 0}
-summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:1.05rem}
+details{border:1px solid var(--line);border-radius:var(--r);background:var(--card);margin:10px 0}
+summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:1.02rem}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--r)}
 details[open]>summary{border-bottom:1px solid var(--line)}
-details>*:not(summary){margin:12px 14px}
+details>*:not(summary){margin:14px 16px}
+details>.wrap{margin:14px 16px}
 .g3{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-weight:400}
+.chk input{margin-top:5px;flex:none}
+
+/* thời khóa biểu lớp: màu theo buổi */
+#clout td,#clout th{white-space:normal;vertical-align:top;min-width:110px}
+#clout td.d,#clout th.d{white-space:nowrap;min-width:0}
+#clout td.d b{display:block}
+#clout td.d span{color:var(--muted);font-size:.85rem}
+#clout th.bS{box-shadow:inset 0 -3px 0 var(--chalk)}
+#clout th.bC{box-shadow:inset 0 -3px 0 var(--accent)}
+#clout th.bT{box-shadow:inset 0 -3px 0 #7b7fd0}
+.tk{border-radius:8px;padding:7px 10px;margin:0 0 6px}
+.tk:last-child{margin-bottom:0}
+.tk.bS{background:var(--b-s)}.tk.bC{background:var(--b-c)}.tk.bT{background:var(--b-t)}
+.tk small{color:var(--muted);display:block;font-size:.82rem;line-height:1.4}
+
+/* giấy tờ in */
 #paper{background:#fff;color:#000;padding:26px 32px;font:15px/1.5 "Times New Roman",Times,serif;border:1px solid var(--line);border-radius:6px;overflow-x:auto;margin-top:12px}
 #paper table{width:100%}
 #paper th,#paper td{background:#fff;color:#000;white-space:normal;border:1px solid #000;padding:5px 8px;position:static;vertical-align:top}
 #paper .nb td{border:none}
 .pg+.pg{border-top:2px dashed #999;margin-top:26px;padding-top:22px}
-#clout td,#clout th{white-space:normal;vertical-align:top;min-width:96px}#clout td.d{white-space:nowrap;min-width:0}.tk{margin:0 0 8px}.tk:last-child{margin-bottom:0}.tk small{color:var(--muted);display:block}
+
+/* bộ lọc chỉ hiện ở mục cần dùng */
+body[data-view="data"] .filters,body[data-view="lop"] .filters{display:none}
+
+/* ---------- điện thoại: menu xuống đáy ---------- */
+@media(max-width:899px){
+  .app{display:block}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--side);color:#fff;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+  .top .brand{padding:0}
+  .top .brand .logo{width:32px;height:32px}
+  .top .themebtn{padding:6px 10px}
+  .side{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;z-index:20;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));flex-direction:row;border-top:1px solid rgba(255,255,255,.14)}
+  .side .brand,.side .sidefoot,.nav hr{display:none}
+  .nav{flex-direction:row;width:100%;gap:2px}
+  .nav button{flex-direction:column;gap:2px;justify-content:center;text-align:center;padding:7px 2px;font-size:.74rem;min-height:54px;flex:1 1 0}
+  .nav button[aria-current="page"]::before{left:22%;right:22%;top:0;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px}
+  .nav .l{display:none}.nav .s{display:inline}
+  .main{padding:20px 16px calc(88px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:1.35rem}
+  .tot{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .tot div{padding:8px 10px}
+  .tot strong{font-size:1.4rem}
+  .tot span{font-size:.8rem;line-height:1.3;display:block}
+  #paper{padding:16px}
+}
+@media(prefers-reduced-motion:no-preference){.nav button,.themebtn,button.btn{transition:background-color .15s,border-color .15s,color .15s}}
+
+/* ---------- in ---------- */
 @page{size:A4;margin:15mm 15mm 15mm 20mm}
-@media print{body.pp #paper{font-size:12pt}body.pp .pg+.pg{border:none;margin:0;padding:0}.panel,.noprint{display:none}body{background:#fff;color:#000}body.pp main>*:not(#bk){display:none}body.pc main>*:not(#clsec){display:none}body.pc #cld>summary{display:none}body.pp #paper{border:none;padding:0;margin:0}}
+@media print{
+  .side,.top,.filters,.vh .acts,.panel,.noprint{display:none!important}
+  .app{display:block}.main{padding:0;max-width:none}
+  body{background:#fff;color:#000}
+  .vh{margin-bottom:8px}
+  body.pp .vh,body.pp #bkempty{display:none}
+  body.pp #paper{font-size:12pt;border:none;padding:0;margin:0}
+  body.pp .pg+.pg{border:none;margin:0;padding:0}
+  body.pc .vh p{display:none}
+  .tk{background:none!important;border:1px solid #bbb}
+}
 </style>
 </head>
-<body>
-<main>
-<h1>Thống kê giảng dạy theo giáo viên</h1>
-<p class="sub">Chọn file lịch giảng dạy Excel của trường. File chỉ được đọc ngay trên máy của bạn, không tải lên đâu cả.</p>
+<body data-view="gv">
+<header class="top">
+  <div class="brand"><span class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></svg></span><div><b>Thống kê giảng dạy</b></div></div>
+  <button type="button" class="themebtn" data-theme-btn aria-label="Đổi giao diện sáng/tối">Giao diện</button>
+</header>
+<div class="app">
+<aside class="side">
+  <div class="brand"><span class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></svg></span><div><b>Thống kê giảng dạy</b><small>Trường CĐN Quảng Trị</small></div></div>
+  <nav class="nav" aria-label="Chức năng">
+    <button type="button" data-go="gv" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="l">Thống kê giáo viên</span><span class="s">Giáo viên</span></button>
+    <button type="button" data-go="lop"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="l">Thời khóa biểu lớp</span><span class="s">Lớp</span></button>
+    <button type="button" data-go="ctp"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg><span class="l">Hồ sơ công tác phí</span><span class="s">Công tác phí</span></button>
+    <hr>
+    <button type="button" data-go="data"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span class="l">Dữ liệu lịch</span><span class="s">Dữ liệu</span></button>
+  </nav>
+  <div class="sidefoot"><div id="navstat">Chưa có dữ liệu</div><button type="button" class="themebtn" data-theme-btn aria-label="Đổi giao diện sáng/tối">Giao diện</button></div>
+</aside>
 
-<section class="panel noprint">
-  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Chọn file Excel">
-    <b id="fname">Bấm để chọn một hoặc nhiều file Excel</b><br>hoặc kéo thả nhiều file .xlsx vào đây. Có thể thêm file tiếp nhiều lần.
-    <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
-  </div>
+<main class="main">
+
+<section class="panel filters noprint" aria-label="Bộ lọc">
   <div class="row">
     <div><label for="gv">Tên giáo viên</label><input type="text" id="gv" list="gvlist" value="Lê Quốc Hoàng" placeholder="Để trống để xem tất cả giáo viên" autocomplete="off"><datalist id="gvlist"></datalist></div>
     <div><label for="mon">Tháng</label><select id="mon"><option value="">Tất cả các tháng</option></select></div>
+    <div><button type="button" id="all">Xem tất cả giáo viên</button></div>
   </div>
-  <div><button type="button" id="all">Xem tất cả giáo viên</button> <button type="button" id="reset">Xóa hết file đã chọn</button></div>
-  <p class="note" style="margin:0">Nếu hai file có cùng tên sheet (ví dụ bản gốc và bản điều chỉnh của cùng một tháng), trang dùng file được lưu sau cùng. Sheet đang ẩn trong Excel được bỏ qua.</p>
-  <p class="note" id="saved" style="margin:0"></p>
-  <p class="note" id="repoinfo" style="margin:0"></p>
+</section>
+
+<section class="view" id="v-gv">
+  <div class="vh"><div><h1>Thống kê giáo viên</h1><p>Số tiết, ngày lên lớp và số buổi của từng giáo viên theo tháng.</p></div>
+    <div class="acts noprint"><button type="button" id="print">In trang này</button></div></div>
+  <div id="out"><div class="empty"><b>Chưa có dữ liệu</b>Mở mục <button type="button" class="lk" data-go="data">Dữ liệu lịch</button> để nạp file Excel.</div></div>
+</section>
+
+<section class="view" id="v-lop" hidden>
+  <div class="vh"><div><h1>Thời khóa biểu lớp</h1><p>Chọn lớp và tháng để xem ngày nào có buổi nào, học tiết nào.</p></div></div>
+  <div id="clsec">
+    <div id="cld">
+      <div class="panel noprint"><div class="row two">
+        <div><label for="cls">Lớp</label><select id="cls"><option value="">Chọn lớp</option></select></div>
+        <div><label for="cmon">Tháng</label><select id="cmon"></select></div>
+      </div><div><button type="button" id="clprint">In thời khóa biểu lớp</button></div></div>
+      <div id="clout"></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-ctp" hidden>
+  <div class="vh"><div><h1>Hồ sơ công tác phí</h1><p>Giấy đề nghị thanh toán, bảng kê và bản xác nhận cho các buổi dạy ở trung tâm liên kết. Giáo viên và tháng chọn ở ô lọc phía trên.</p></div></div>
+  <div class="empty" id="bkempty"><b>Chưa có buổi dạy phù hợp</b>Chọn một giáo viên có buổi dạy tại trung tâm liên kết ở ô lọc phía trên.</div>
+  <section id="bk" style="display:none">
+    <p class="note noprint" id="bkmsg"></p>
+    <div class="panel noprint"><div class="g3">
+      <div><label for="k_khoa">Khoa</label><input type="text" id="k_khoa"></div>
+      <div><label for="k_ngay">Ngày lập</label><input type="text" id="k_ngay"></div>
+      <div><label for="k_ht">P. Hiệu trưởng</label><input type="text" id="k_ht" value="Nguyễn Xuân Hiếu"></div>
+      <div><label for="k_dt">Phòng ĐT và CTHSSV</label><input type="text" id="k_dt" value="Nguyễn Trường Thi"></div>
+      <div><label for="k_tk">Trưởng khoa</label><input type="text" id="k_tk" value="Trần Phương Thuý"></div>
+    </div><div class="g3" id="k_rates"></div></div>
+    <p class="noprint acts" id="bkbtns" style="display:none;margin:12px 0"><button type="button" class="pri" id="bkprint">In / Lưu PDF</button><button type="button" id="bkdoc">Tải file Word (.doc)</button></p>
+    <div id="paper"></div>
+  </section>
+</section>
+
+<section class="view" id="v-data" hidden>
+  <div class="vh"><div><h1>Dữ liệu lịch</h1><p>Trang tự nạp các file Excel trong thư mục data/ của kho GitHub. Bạn cũng có thể chọn file từ máy, file chỉ được đọc trên máy của bạn, không tải lên đâu cả.</p></div></div>
+  <div class="panel noprint">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Chọn file Excel">
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><br>
+      <b id="fname">Bấm để chọn một hoặc nhiều file Excel</b><br>hoặc kéo thả file .xlsx vào đây. Có thể thêm file nhiều lần.
+      <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
+    </div>
+    <div class="acts"><button type="button" id="reset">Xóa hết file đã chọn</button></div>
+    <p class="note" style="margin:0">Nếu hai file có cùng tên sheet (ví dụ bản gốc và bản điều chỉnh của cùng một tháng), trang dùng file được lưu sau cùng. Sheet đang ẩn trong Excel được bỏ qua.</p>
+    <p class="note" id="saved" style="margin:0"></p>
+    <p class="note" id="repoinfo" style="margin:0"></p>
+  </div>
   <div id="sheets"></div>
 </section>
 
-<div id="out"><p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p></div>
-<section id="clsec">
-  <details id="cld"><summary class="noprint">Thời khóa biểu lớp theo tháng (ngày, buổi, tiết)</summary>
-  <div class="panel noprint"><div class="row">
-    <div><label for="cls">Lớp</label><select id="cls"><option value="">Chọn lớp</option></select></div>
-    <div><label for="cmon">Tháng</label><select id="cmon"></select></div>
-  </div><div><button type="button" id="clprint">In thời khóa biểu lớp</button></div></div>
-  <div id="clout"></div>
-  </details>
-</section>
-<section id="bk" style="display:none">
-  <details id="bkd"><summary class="noprint">Hồ sơ thanh toán công tác phí (giấy đề nghị, bảng kê, bản xác nhận)</summary>
-  <p class="note noprint" id="bkmsg"></p>
-  <div class="panel noprint"><div class="g3">
-    <div><label for="k_khoa">Khoa</label><input type="text" id="k_khoa"></div>
-    <div><label for="k_ngay">Ngày lập</label><input type="text" id="k_ngay"></div>
-    <div><label for="k_ht">P. Hiệu trưởng</label><input type="text" id="k_ht" value="Nguyễn Xuân Hiếu"></div>
-    <div><label for="k_dt">Phòng ĐT và CTHSSV</label><input type="text" id="k_dt" value="Nguyễn Trường Thi"></div>
-    <div><label for="k_tk">Trưởng khoa</label><input type="text" id="k_tk" value="Trần Phương Thuý"></div>
-  </div><div class="g3" id="k_rates"></div></div>
-  <p class="noprint" id="bkbtns" style="display:none"><button type="button" id="bkprint">In / Lưu PDF</button> <button type="button" id="bkdoc">Tải file Word (.doc)</button></p>
-  <div id="paper"></div>
-</details>
-</section>
-<p class="note noprint"><button id="print">In trang này</button></p>
 </main>
+</div>
 
 <script>
 var REC=[];
@@ -172,6 +317,7 @@ function parseBook(wb){
 }
 
 var SHEETS={},FN=[],IDS=[],ALL=[],CLS={};
+var EMPTY='<div class="empty"><b>Chưa có dữ liệu</b>Mở mục <button type="button" class="lk" data-go="data">Dữ liệu lịch</button> để nạp file Excel.</div>';
 var DB=null;
 function dbOpen(cb){try{var q=indexedDB.open("tkb-giang-day",1);q.onupgradeneeded=function(){q.result.createObjectStore("kv")};q.onsuccess=function(){cb(q.result)};q.onerror=function(){cb(null)}}catch(e){cb(null)}}
 function saveState(){
@@ -230,7 +376,8 @@ function rebuild(){
   $("mon").innerHTML='<option value="">Tất cả các tháng</option>'+Object.keys(months).map(Number).sort(function(a,b){return a-b}).map(function(m){return '<option value="'+m+'"'+(String(m)===mv?' selected':'')+'>Tháng '+m+'</option>'}).join("");
   var on=0,dup=false;
   var li=IDS.map(function(id,i){var s=SHEETS[id];if(s.on)on++;if(s.dup)dup=true;
-    return '<label style="display:block;margin:4px 0"><input type="checkbox" data-i="'+i+'"'+(s.on?' checked':'')+'> '+esc(s.file)+' · '+esc(s.name)+' · tháng '+s.month+' · '+s.recs.length+' dòng'+(s.dup?' <span class="warn">(cùng khoa, cùng tháng với sheet khác nên đang tắt; bật nếu đây mới là bản đúng)</span>':'')+'</label>'}).join("");
+    return '<label class="chk"><input type="checkbox" data-i="'+i+'"'+(s.on?' checked':'')+'> '+esc(s.file)+' · '+esc(s.name)+' · tháng '+s.month+' · '+s.recs.length+' dòng'+(s.dup?' <span class="warn">(cùng khoa, cùng tháng với sheet khác nên đang tắt; bật nếu đây mới là bản đúng)</span>':'')+'</label>'}).join("");
+  $("navstat").textContent=IDS.length?FN.length+" file · "+on+"/"+IDS.length+" sheet đang dùng":"Chưa có dữ liệu";
   $("sheets").innerHTML=IDS.length?'<details'+(open||dup?' open':'')+'><summary>Các sheet đang dùng ('+on+'/'+IDS.length+')'+(dup?' <span class="warn">– cần kiểm tra</span>':'')+'</summary>'+li+'</details>':"";
   if(merged.length)$("sheets").innerHTML+='<p class="note">Đã gộp các tên chỉ khác dấu: '+merged.join("; ")+'.</p>';
   buildClasses();render();saveState();
@@ -347,8 +494,8 @@ function render(){renderMain();renderBK();renderClass()}
 function renderBK(){
   var box=$("bk"),who=norm($("gv").value),mf=$("mon").value,P=$("paper"),btn=$("bkbtns");
   var rows=who?REC.filter(function(r){return norm(r.teacher)===who&&(!mf||r.m==mf)}):[];
-  if(!rows.length){box.style.display="none";return}
-  box.style.display="block";BKNAME=rows[0].teacher.replace(/\s+/g,"_");
+  if(!rows.length){box.style.display="none";$("bkempty").style.display="block";return}
+  box.style.display="block";$("bkempty").style.display="none";BKNAME=rows[0].teacher.replace(/\s+/g,"_");
   if(!mf){$("bkmsg").textContent="Hãy chọn một tháng cụ thể ở ô “Tháng” để lập bảng kê.";P.innerHTML="";btn.style.display="none";return}
   var cr=rows.filter(function(r){return centerOf(r.room)});
   if(!cr.length){$("bkmsg").textContent="Tháng này không có buổi dạy nào ở trung tâm liên kết (không tính các buổi dạy online).";P.innerHTML="";btn.style.display="none";return}
@@ -414,7 +561,7 @@ var drop=$("drop"),fi=$("file");
 drop.addEventListener("click",function(){fi.click()});
 drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
 fi.addEventListener("change",function(){if(fi.files.length){load(fi.files);fi.value=""}});
-$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];ALL=[];buildClasses();renderClass();clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML='<p class="msg">Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.</p>'});
+$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];ALL=[];buildClasses();renderClass();clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML=EMPTY;$("navstat").textContent="Chưa có dữ liệu"});
 ["dragover","dragenter"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.add("over")})});
 ["dragleave","drop"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove("over")})});
 drop.addEventListener("drop",function(e){var f=e.dataTransfer.files;if(f.length)load(f)});
@@ -445,7 +592,7 @@ function buildClasses(){
 }
 function renderClass(){
   var k=$("cls").value,out=$("clout"),msel=$("cmon");
-  if(!k||!CLS[k]){msel.innerHTML="";msel.dataset.sig="";out.innerHTML='<p class="msg">'+(ALL.length?'Chọn lớp để xem thời khóa biểu theo tháng.':'Chưa có dữ liệu. Hãy chọn file lịch giảng dạy.')+'</p>';return}
+  if(!k||!CLS[k]){msel.innerHTML="";msel.dataset.sig="";out.innerHTML=ALL.length?'<div class="empty"><b>Chưa chọn lớp</b>Chọn lớp ở ô phía trên để xem thời khóa biểu theo tháng.</div>':EMPTY;return}
   var ms={};CLS[k].recs.forEach(function(r){ms[r.m]=1});
   var mk=Object.keys(ms).map(Number).sort(function(a,b){return a-b}),sig=mk.join(","),cur=msel.value;
   if(msel.dataset.sig!==sig){msel.dataset.sig=sig;msel.innerHTML=mk.map(function(m){return '<option value="'+m+'">Tháng '+m+'</option>'}).join("");cur=String(mk[mk.length-1])}
@@ -466,14 +613,14 @@ function renderClass(){
     x.n+=r.n;x.b[d+b]=1;f.t.forEach(function(t){if(x.t.indexOf(t)<0)x.t.push(t)});
   });
   order.sort();
-  var cell=function(a){return a.map(function(f){var r=f.r;
-    return '<div class="tk"><b>'+esc(r.subj)+'</b><small>Tiết '+esc(tietOf(r.ca))+' ('+r.n+' tiết)</small><small>'+esc(f.t.join(" + "))+(f.rooms.length?' · '+esc(f.rooms.join(", ")):'')+'</small></div>'}).join("")};
+  var cell=function(a,b){return a.map(function(f){var r=f.r;
+    return '<div class="tk b'+b+'"><b>'+esc(r.subj)+'</b><small>Tiết '+esc(tietOf(r.ca))+' ('+r.n+' tiết)</small><small>'+esc(f.t.join(" + "))+(f.rooms.length?' · '+esc(f.rooms.join(", ")):'')+'</small></div>'}).join("")};
   var body=order.map(function(d){var o=days[d];
-    return '<tr><td class="d"><b>'+fmt(o.date)+'</b></td><td class="d">'+o.thu+'</td><td>'+cell(o.S)+'</td><td>'+cell(o.C)+'</td>'+(hasT?'<td>'+cell(o.T)+'</td>':'')+'</tr>'}).join("");
+    return '<tr><td class="d"><b>'+fmt(o.date)+'</b><span>'+(o.thu==="CN"?"Chủ nhật":"Thứ "+o.thu.slice(1))+'</span></td><td>'+cell(o.S,"S")+'</td><td>'+cell(o.C,"C")+'</td>'+(hasT?'<td>'+cell(o.T,"T")+'</td>':'')+'</tr>'}).join("");
   var sb=sk.map(function(s){var x=subj[s];return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.t.join(", "))+'</td><td class="n">'+Object.keys(x.b).length+'</td><td class="n">'+x.n+'</td></tr>'}).join("");
   out.innerHTML='<h2>Lớp '+esc(CLS[k].name)+' – tháng '+mo+'</h2>'+
     '<div class="tot"><div><strong>'+order.length+'</strong><span>ngày có học</span></div><div><strong>'+Object.keys(bs).length+'</strong><span>buổi (ca)</span></div><div><strong>'+tot+'</strong><span>tiết</span></div></div>'+
-    '<h2>Thời khóa biểu theo ngày</h2><div class="wrap"><table><tr><th>Ngày</th><th>Thứ</th><th>Sáng</th><th>Chiều</th>'+(hasT?'<th>Tối</th>':'')+'</tr>'+body+'</table></div>'+
+    '<h2>Thời khóa biểu theo ngày</h2><div class="wrap"><table><tr><th class="d">Ngày</th><th class="bS">Sáng</th><th class="bC">Chiều</th>'+(hasT?'<th class="bT">Tối</th>':'')+'</tr>'+body+'</table></div>'+
     '<h2>Tổng hợp theo môn/mô đun</h2><div class="wrap"><table><tr><th>Môn/Mô đun</th><th>Giáo viên</th><th class="n">Số buổi</th><th class="n">Số tiết</th></tr>'+sb+'<tr class="sum"><td>Cộng</td><td></td><td class="n">'+Object.keys(bs).length+'</td><td class="n">'+tot+'</td></tr></table></div>'+
     '<p class="note">Tiết sinh hoạt lớp không được thống kê. Các dòng trùng giữa sheet của Khoa và sheet trung tâm chỉ hiện một lần.</p>';
 }
@@ -482,6 +629,32 @@ $("cmon").addEventListener("change",renderClass);
 $("clprint").addEventListener("click",function(){var d=$("cld");d.open=true;document.body.classList.add("pc");window.print();document.body.classList.remove("pc")});
 $("mon").addEventListener("change",function(){render();saveState()});
 $("print").addEventListener("click",function(){window.print()});
+
+/* ===== Điều hướng giữa các mục ===== */
+var VIEWS=["gv","lop","ctp","data"];
+function go(v){
+  if(VIEWS.indexOf(v)<0)v="gv";
+  document.body.setAttribute("data-view",v);
+  VIEWS.forEach(function(x){$("v-"+x).hidden=x!==v});
+  [].forEach.call(document.querySelectorAll(".nav button"),function(b){if(b.getAttribute("data-go")===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  try{if(location.hash!=="#"+v)history.replaceState(null,"","#"+v)}catch(e){}
+  var f=document.querySelector(".filters"),vh=$("v-"+v).querySelector(".vh");if(vh&&(v==="gv"||v==="ctp"))vh.after(f);
+  window.scrollTo(0,0);
+}
+document.addEventListener("click",function(e){var b=e.target.closest("[data-go]");if(b){e.preventDefault();go(b.getAttribute("data-go"))}});
+window.addEventListener("hashchange",function(){go(location.hash.slice(1))});
+go((location.hash||"").slice(1)||"gv");
+
+/* ===== Giao diện sáng / tối ===== */
+var THEMES=["auto","light","dark"],TLAB={auto:"Giao diện: tự động",light:"Giao diện: sáng",dark:"Giao diện: tối"};
+function setTheme(t){
+  var r=document.documentElement;if(t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",t);
+  [].forEach.call(document.querySelectorAll("[data-theme-btn]"),function(b){b.textContent=TLAB[t]});
+}
+var curTheme="auto";try{curTheme=localStorage.getItem("tk-theme")||"auto"}catch(e){}
+if(THEMES.indexOf(curTheme)<0)curTheme="auto";setTheme(curTheme);
+[].forEach.call(document.querySelectorAll("[data-theme-btn]"),function(b){b.addEventListener("click",function(){curTheme=THEMES[(THEMES.indexOf(curTheme)+1)%3];setTheme(curTheme);try{localStorage.setItem("tk-theme",curTheme)}catch(e){}})});
+
 loadState(autoLoad);
 </script>
 </body>
