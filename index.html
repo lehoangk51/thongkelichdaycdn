@@ -13,17 +13,17 @@
   --bg:#f2f5f3;--card:#fff;--fg:#14262a;--muted:#5a6b70;--line:#dce4e1;
   --accent:#0f5c63;--accent-fg:#fff;--soft:#e5efee;--warn:#8a5a00;
   --side:#0c383d;--side-fg:#bcd6d5;--side-act:#164e55;--chalk:#f0cb55;
-  --b-s:#fbf0c9;--b-c:#dcebea;--b-t:#e3e4f4;
+  --b-s:#e4efb4;--b-c:#17606a;--b-t:#e3e4f4;--b-s-line:#a9bd2c;
   --r:12px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f1517;--card:#172023;--fg:#e6ecec;--muted:#93a3a6;--line:#27363a;
   --accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#1f2f31;--warn:#e0b050;
-  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#3a3418;--b-c:#1d3436;--b-t:#272a45;color-scheme:dark}}
+  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#39481c;--b-c:#1f6f78;--b-t:#272a45;--b-s-line:#9fb52c;color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1517;--card:#172023;--fg:#e6ecec;--muted:#93a3a6;--line:#27363a;
   --accent:#58b7bf;--accent-fg:#0b1c1e;--soft:#1f2f31;--warn:#e0b050;
-  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#3a3418;--b-c:#1d3436;--b-t:#272a45;color-scheme:dark}
+  --side:#0a1a1d;--side-fg:#9db9b8;--side-act:#16363a;--b-s:#39481c;--b-c:#1f6f78;--b-t:#272a45;--b-s-line:#9fb52c;color-scheme:dark}
 *{box-sizing:border-box}
 html{scroll-padding-top:12px}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 "Be Vietnam Pro","Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
@@ -62,6 +62,18 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* ---------- thành phần ---------- */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:14px}
 .filters{margin:0 0 18px}
+.combo{position:relative}
+.combo input{padding-right:46px}
+.panel .combo-btn{position:absolute;right:0;top:0;height:44px;width:44px;min-height:44px;padding:0;border:0;background:none;display:grid;place-items:center;color:var(--muted);border-radius:0 9px 9px 0}
+.panel .combo-btn:hover{color:var(--accent);border:0}
+.combo-btn svg{transition:transform .15s}
+.combo.open .combo-btn svg{transform:rotate(180deg)}
+.combo-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:4px;list-style:none;max-height:300px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(10,30,34,.18)}
+.combo-list li{padding:9px 10px;border-radius:7px;cursor:pointer}
+.combo-list li:hover,.combo-list li.act{background:var(--soft)}
+.combo-list li[aria-selected="true"]{font-weight:600;color:var(--accent)}
+.combo-list li.none{color:var(--muted);cursor:default}
+.combo-list li.none:hover{background:none}
 .row{display:grid;grid-template-columns:1fr;gap:12px}
 @media(min-width:700px){.row{grid-template-columns:2fr 1fr auto;align-items:end}.row.two{grid-template-columns:2fr 1fr}}
 label{font-weight:600;display:block;margin-bottom:5px;font-size:.92rem}
@@ -111,12 +123,13 @@ details>.wrap{margin:14px 16px}
 #clout td.d,#clout th.d{white-space:nowrap;min-width:0}
 #clout td.d b{display:block}
 #clout td.d span{color:var(--muted);font-size:.85rem}
-#clout th.bS{box-shadow:inset 0 -3px 0 var(--chalk)}
-#clout th.bC{box-shadow:inset 0 -3px 0 var(--accent)}
+#clout th.bS{box-shadow:inset 0 -3px 0 var(--b-s-line)}
+#clout th.bC{box-shadow:inset 0 -3px 0 var(--b-c)}
 #clout th.bT{box-shadow:inset 0 -3px 0 #7b7fd0}
 .tk{border-radius:8px;padding:7px 10px;margin:0 0 6px}
 .tk:last-child{margin-bottom:0}
-.tk.bS{background:var(--b-s)}.tk.bC{background:var(--b-c)}.tk.bT{background:var(--b-t)}
+.tk.bS{background:var(--b-s)}.tk.bC{background:var(--b-c);color:#fff}.tk.bT{background:var(--b-t)}
+.tk.bC small{color:rgba(255,255,255,.85)}
 .tk small{color:var(--muted);display:block;font-size:.82rem;line-height:1.4}
 
 /* giấy tờ in */
@@ -163,7 +176,8 @@ body[data-view="data"] .filters,body[data-view="lop"] .filters{display:none}
   body.pp #paper{font-size:12pt;border:none;padding:0;margin:0}
   body.pp .pg+.pg{border:none;margin:0;padding:0}
   body.pc .vh p{display:none}
-  .tk{background:none!important;border:1px solid #bbb}
+  .tk{background:none!important;border:1px solid #bbb;color:#000!important}
+  .tk small{color:#444!important}
 }
 </style>
 </head>
@@ -189,7 +203,12 @@ body[data-view="data"] .filters,body[data-view="lop"] .filters{display:none}
 
 <section class="panel filters noprint" aria-label="Bộ lọc">
   <div class="row">
-    <div><label for="gv">Tên giáo viên</label><input type="text" id="gv" list="gvlist" value="Lê Quốc Hoàng" placeholder="Để trống để xem tất cả giáo viên" autocomplete="off"><datalist id="gvlist"></datalist></div>
+    <div><label for="gv">Tên giáo viên</label>
+      <div class="combo" id="gvbox">
+        <input type="text" id="gv" value="Lê Quốc Hoàng" placeholder="Để trống để xem tất cả giáo viên" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="gvlist" aria-autocomplete="list">
+        <button type="button" id="gvbtn" class="combo-btn" aria-label="Hiện danh sách giáo viên" tabindex="-1"><svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <ul id="gvlist" class="combo-list" role="listbox" hidden></ul>
+      </div></div>
     <div><label for="mon">Tháng</label><select id="mon"><option value="">Tất cả các tháng</option></select></div>
     <div><button type="button" id="all">Xem tất cả giáo viên</button></div>
   </div>
@@ -316,7 +335,7 @@ function parseBook(wb){
   return out;
 }
 
-var SHEETS={},FN=[],IDS=[],ALL=[],CLS={};
+var SHEETS={},FN=[],IDS=[],ALL=[],CLS={},NAMES=[];
 var EMPTY='<div class="empty"><b>Chưa có dữ liệu</b>Mở mục <button type="button" class="lk" data-go="data">Dữ liệu lịch</button> để nạp file Excel.</div>';
 var DB=null;
 function dbOpen(cb){try{var q=indexedDB.open("tkb-giang-day",1);q.onupgradeneeded=function(){q.result.createObjectStore("kv")};q.onsuccess=function(){cb(q.result)};q.onerror=function(){cb(null)}}catch(e){cb(null)}}
@@ -372,7 +391,7 @@ function rebuild(){
     if(!f){s2[k]=r;R2.push(r)}else if(f.cls.split(" + ").indexOf(r.cls0)<0)f.cls+=" + "+r.cls0});
   REC=R2;
   $("fname").textContent=FN.length+" file: "+FN.join(", ");
-  $("gvlist").innerHTML=Object.keys(names).sort().map(function(n){return '<option value="'+esc(n)+'">'}).join("");
+  NAMES=Object.keys(names).sort(function(a,b){return a.localeCompare(b,"vi")});fillCombo(false);
   $("mon").innerHTML='<option value="">Tất cả các tháng</option>'+Object.keys(months).map(Number).sort(function(a,b){return a-b}).map(function(m){return '<option value="'+m+'"'+(String(m)===mv?' selected':'')+'>Tháng '+m+'</option>'}).join("");
   var on=0,dup=false;
   var li=IDS.map(function(id,i){var s=SHEETS[id];if(s.on)on++;if(s.dup)dup=true;
@@ -437,7 +456,7 @@ function renderMain(){
   var who=norm($("gv").value), mf=$("mon").value;
   if(!who){renderAll(mf);return}
   var rows=REC.filter(function(r){return norm(r.teacher)===who&&(!mf||r.m==mf)});
-  if(!rows.length){out.innerHTML='<p class="msg warn">Không có tiết dạy nào của “'+esc($("gv").value)+'”. Chọn tên trong danh sách gợi ý để đúng chính tả.</p>';return}
+  if(!rows.length){out.innerHTML='<p class="msg warn">Không có tiết dạy nào của “'+esc($("gv").value)+'”. Bấm mũi tên ▾ ở ô Tên giáo viên để chọn đúng tên.</p>';return}
   rows.sort(function(a,b){return a.m-b.m||a.date-b.date||a.ca.localeCompare(b.ca)});
   var bm={},bc={};
   rows.forEach(function(r){
@@ -556,18 +575,49 @@ function renderAll(mf){
     '<tr class="sum"><td>'+ks.length+' giáo viên</td><td class="n">'+tot+'</td><td></td><td></td></tr></table></div>';
 }
 $("out").addEventListener("click",function(e){var b=e.target.closest("[data-gv]");if(b){$("gv").value=b.getAttribute("data-gv");render();window.scrollTo(0,0)}});
-$("all").addEventListener("click",function(){$("gv").value="";render()});
+$("all").addEventListener("click",function(){$("gv").value="";openCombo(false);render()});
 var drop=$("drop"),fi=$("file");
 drop.addEventListener("click",function(){fi.click()});
 drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
 fi.addEventListener("change",function(){if(fi.files.length){load(fi.files);fi.value=""}});
-$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];ALL=[];buildClasses();renderClass();clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";$("gvlist").innerHTML="";$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML=EMPTY;$("navstat").textContent="Chưa có dữ liệu"});
+$("reset").addEventListener("click",function(){SHEETS={};FN=[];REC=[];ALL=[];buildClasses();renderClass();clearState();$("fname").textContent="Bấm để chọn một hoặc nhiều file Excel";NAMES=[];fillCombo(false);$("sheets").innerHTML="";$("mon").innerHTML='<option value="">Tất cả các tháng</option>';$("out").innerHTML=EMPTY;$("navstat").textContent="Chưa có dữ liệu"});
 ["dragover","dragenter"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.add("over")})});
 ["dragleave","drop"].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove("over")})});
 drop.addEventListener("drop",function(e){var f=e.dataTransfer.files;if(f.length)load(f)});
 $("sheets").addEventListener("change",function(e){var i=e.target.getAttribute("data-i");if(i!==null){SHEETS[IDS[+i]].on=e.target.checked;rebuild()}});
 $("out").addEventListener("toggle",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)OPEN[k]=e.target.open},true);
-$("gv").addEventListener("input",function(){render();saveState()});
+$("gv").addEventListener("input",function(){render();saveState();fillCombo(true);openCombo(true)});
+
+/* ===== Danh sách chọn giáo viên (bấm mũi tên xuống để xem tất cả) ===== */
+var gvAct=-1;
+function fillCombo(filter){
+  var ul=$("gvlist"),q=filter?strip($("gv").value):"",cur=norm($("gv").value);
+  var list=NAMES.filter(function(n){return !q||strip(n).indexOf(q)>=0});
+  ul.innerHTML=list.length?list.map(function(n){return '<li role="option" data-v="'+esc(n)+'"'+(norm(n)===cur?' aria-selected="true"':'')+'>'+esc(n)+'</li>'}).join(""):'<li class="none">'+(NAMES.length?'Không có giáo viên khớp với tên đã gõ':'Chưa có dữ liệu giáo viên')+'</li>';
+  gvAct=-1;
+}
+function openCombo(on){
+  var ul=$("gvlist");ul.hidden=!on;$("gvbox").classList.toggle("open",on);$("gv").setAttribute("aria-expanded",on?"true":"false");
+  if(on){var s=ul.querySelector('[aria-selected="true"]');if(s)ul.scrollTop=Math.max(0,s.offsetTop-ul.clientHeight/2+s.offsetHeight/2)}
+}
+function pickName(n){$("gv").value=n;openCombo(false);render();saveState()}
+$("gvbtn").addEventListener("click",function(){
+  if(!$("gvlist").hidden){openCombo(false);return}
+  fillCombo(false);openCombo(true);
+});
+$("gvlist").addEventListener("mousedown",function(e){e.preventDefault()});
+$("gvlist").addEventListener("click",function(e){var li=e.target.closest("li[data-v]");if(li)pickName(li.getAttribute("data-v"))});
+$("gv").addEventListener("keydown",function(e){
+  var ul=$("gvlist"),items=[].slice.call(ul.querySelectorAll("li[data-v]"));
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();if(ul.hidden){fillCombo(false);items=[].slice.call(ul.querySelectorAll("li[data-v]"));openCombo(true)}
+    if(!items.length)return;
+    gvAct=e.key==="ArrowDown"?Math.min(items.length-1,gvAct+1):Math.max(0,gvAct-1);
+    items.forEach(function(li,i){li.classList.toggle("act",i===gvAct)});items[gvAct].scrollIntoView({block:"nearest"});
+  }else if(e.key==="Enter"&&!ul.hidden&&gvAct>=0&&items[gvAct]){e.preventDefault();pickName(items[gvAct].getAttribute("data-v"))}
+  else if(e.key==="Escape"){openCombo(false)}
+});
+document.addEventListener("click",function(e){if(!e.target.closest("#gvbox"))openCombo(false)});
 ["k_khoa","k_ngay","k_ht","k_dt","k_tk"].forEach(function(id){$(id).addEventListener("input",function(){this.dataset.t=1;renderBK();saveState()})});
 $("k_rates").addEventListener("input",function(e){var c=e.target.getAttribute("data-c");if(c){RATES[c]=e.target.value;renderBK();saveState()}});
 $("bkprint").addEventListener("click",function(){document.body.classList.add("pp");window.print();document.body.classList.remove("pp")});
