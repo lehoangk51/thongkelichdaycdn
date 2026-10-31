@@ -226,22 +226,44 @@ function rebuild(){
 }
 
 
+function getList(){
+  return fetch("data/index.json",{cache:"no-store"}).then(function(r){if(!r.ok)throw {why:"index",code:r.status};return r.json()})
+  .then(function(ix){var l=ix.files||[];if(!l.length)throw {why:"empty"};return l})
+  .catch(function(e){
+    var m,seg,repo;
+    try{m=location.hostname.match(/^([^.]+)\.github\.io$/);seg=location.pathname.split("/").filter(Boolean)[0]}catch(x){m=null}
+    if(!m)throw e;
+    repo=seg&&!/\.html?$/i.test(seg)?seg:m[1]+".github.io";
+    return fetch("https://api.github.com/repos/"+m[1]+"/"+repo+"/contents/data").then(function(r){if(!r.ok)throw e;return r.json()}).then(function(a){
+      var l=a.filter(function(f){return /\.xlsx?$/i.test(f.name)&&f.name.indexOf("~$")!==0}).map(function(f){return {name:f.name,t:f.size}});
+      if(!l.length)throw e;return l});
+  });
+}
 function autoLoad(){
   if(typeof fetch!=="function")return;
-  fetch("data/index.json",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(ix){
-    var list=(ix.files||[]).map(function(f){return typeof f==="string"?{name:f,t:0}:f}),want={},todo=[],removed=false;
+  var inf=$("repoinfo");
+  try{if(location.protocol==="file:"){inf.textContent="Bạn đang mở trang từ file trên máy nên không tự đọc được thư mục data/. Hãy mở bằng địa chỉ GitHub Pages của kho.";return}}catch(x){}
+  getList().then(function(list){
+    var want={},todo=[],removed=false;
     list.forEach(function(f){want[f.name]=1});
     Object.keys(SHEETS).forEach(function(id){if(SHEETS[id].src==="repo"&&!want[SHEETS[id].file]){delete SHEETS[id];removed=true}});
     list.forEach(function(f){var have=Object.keys(SHEETS).some(function(id){var s=SHEETS[id];return s.src==="repo"&&s.file===f.name&&s.t===f.t});if(!have)todo.push(f)});
     return Promise.all(todo.map(function(f){
-      return fetch("data/"+encodeURIComponent(f.name)+"?v="+f.t).then(function(r){if(!r.ok)throw f.name;return r.arrayBuffer()}).then(function(buf){
+      return fetch("data/"+encodeURIComponent(f.name)+"?v="+f.t).then(function(r){if(!r.ok)throw {why:"file",name:f.name,code:r.status};return r.arrayBuffer()}).then(function(buf){
         return {file:{name:f.name,lastModified:f.t},src:"repo",sheets:parseBook(XLSX.read(new Uint8Array(buf),{type:"array"}))}})
     })).then(function(got){
       got.forEach(addBook);
       if(got.length||removed)rebuild();
-      if(list.length)$("repoinfo").textContent="Đã nạp tự động "+list.length+" file lịch từ thư mục data/ của kho"+(got.length?" ("+got.length+" file mới hoặc đã đổi).":".");
+      var n=0;Object.keys(SHEETS).forEach(function(id){if(SHEETS[id].src==="repo")n++});
+      inf.textContent="Đã nạp tự động "+list.length+" file lịch từ thư mục data/ của kho"+(got.length?" ("+got.length+" file mới hoặc đã đổi).":".")+(n?"":" Nhưng không đọc được sheet lịch nào trong các file này, hãy kiểm tra tiêu đề “THÁNG …” và hàng “Lớp”.");
     });
-  }).catch(function(e){if(typeof e==="string")$("repoinfo").textContent="Không tải được file “"+e+"” trong thư mục data/ của kho."});
+  }).catch(function(e){
+    var w=e&&e.why;
+    inf.textContent=w==="index"?"Không tìm thấy data/index.json (mã "+e.code+"). Hãy kiểm tra: thư mục data nằm cùng cấp với file trang, và Action “Cập nhật danh sách file lịch” đã chạy xong ở tab Actions."
+      :w==="empty"?"File data/index.json đang trống, chưa có file Excel nào. Hãy kiểm tra thư mục data đã có file .xlsx và Action đã chạy xong ở tab Actions."
+      :w==="file"?"Không tải được file “"+e.name+"” trong thư mục data/ (mã "+e.code+"). Tên file trong index.json có thể không khớp tên file thật."
+      :"Không đọc được thư mục data/ của kho (lỗi kết nối hoặc đường dẫn sai).";
+  });
 }
 
 function load(files){

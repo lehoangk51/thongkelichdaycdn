@@ -1,12 +1,11 @@
-# Đặt file này tại: .github/workflows/update-index.yml
 # Mỗi khi thêm, sửa hoặc xóa file Excel trong thư mục data/, Action tự tạo lại data/index.json
 name: Cập nhật danh sách file lịch
 
 on:
   push:
     paths:
-      - 'data/**.xlsx'
-      - 'data/**.xls'
+      - 'data/**'
+      - '!data/index.json'
   workflow_dispatch:
 
 permissions:
@@ -22,6 +21,7 @@ jobs:
 
       - name: Tạo data/index.json
         run: |
+          mkdir -p data
           python3 - <<'PYEOF'
           import os, json, subprocess
           files = []
@@ -39,4 +39,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/index.json
-          git diff --cached --quiet || (git commit -m "Cập nhật danh sách file lịch" && git push)
+          if ! git diff --cached --quiet; then
+            git commit -m "Cập nhật danh sách file lịch"
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push
+          fi
