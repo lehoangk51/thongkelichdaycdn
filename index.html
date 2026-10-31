@@ -318,7 +318,7 @@ function parseBook(wb){
         var row=a[r]||[];
         if(row[0]&&String(row[0]).trim())cls=String(row[0]).replace(/\s+/g," ").trim();
         var b=row[tcol],c2=row[scol];
-        if(b||c2){var tb=b,sc=c2;if(isName(sc)&&!isName(tb)){tb=c2;sc=b}teach=tb;subj=sc}
+        if(b||c2){var tb=b,sc=c2;if(isName(sc)&&!isName(tb)){tb=c2;sc=b}if(tb)teach=tb;if(sc)subj=sc}
         if(row[3])room=row[3];
         if(row[4]==null||!teach)continue;
         var ca=String(row[4]).trim();
@@ -474,7 +474,7 @@ function renderMain(){
   h+='<h2>'+esc(rows[0].teacher)+'</h2><div class="tot"><div><strong>'+T.gd+'</strong><span>tiết giảng dạy</span></div><div><strong>'+T.days+'</strong><span>ngày lên lớp</span></div><div><strong>'+T.ses+'</strong><span>buổi (ca)</span></div></div>';
   h+='<h2>Theo tháng</h2><div class="wrap"><table><tr><th>Tháng</th><th class="n">Tiết giảng dạy</th><th class="n">Ngày lên lớp</th><th class="n">Số buổi (ca)</th></tr>'+tr+
     '<tr class="sum"><td>Cộng</td><td class="n">'+T.gd+'</td><td class="n">'+T.days+'</td><td class="n">'+T.ses+'</td></tr></table></div>';
-  h+='<p class="note">Số buổi (ca) là số lượt Sáng/Chiều có tiết giảng dạy. Tiết sinh hoạt lớp không được thống kê.</p>';
+  h+='<p class="note">Số buổi (ca) là số lượt Sáng/Chiều/Tối có tiết giảng dạy. Tiết sinh hoạt lớp không được thống kê.</p>';
   var ck=Object.keys(bc).map(function(k){return bc[k]}).sort(function(a,b){return a.m-b.m||String(a.cls).localeCompare(String(b.cls))});
   h+='<h2>Theo lớp và môn</h2><div class="wrap"><table><tr><th>Tháng</th><th>Lớp</th><th>Môn/Mô đun</th><th class="n">Số tiết</th><th class="n">Số ngày</th></tr>'+
     ck.map(function(c){return '<tr><td>'+c.m+'</td><td>'+esc(c.cls)+'</td><td>'+esc(c.subj)+'</td><td class="n">'+c.n+'</td><td class="n">'+Object.keys(c.days).length+'</td></tr>'}).join("")+'</table></div>';
